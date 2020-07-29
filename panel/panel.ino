@@ -1,5 +1,6 @@
 #include <Wire.h>
 #include "Adafruit_MCP23017.h"
+#include "PinChangeInterrupt.h"
 
 // Install the LowPower library for optional sleeping support.
 // See loop() function comments for details on usage.
@@ -34,6 +35,13 @@
 #define S6 14
 #define S7 9
 #define S8 8
+
+#define E1_S 5
+#define E1_A 10
+#define E1_B 9
+int pinAstateCurrent = LOW;                // Current state of Pin A
+int pinAStateLast = pinAstateCurrent;      // Last read value of Pin A
+
 char * switches[] = { "s8\0", "s7\0", "s2\0", "s1", "s4", "s3", "s6", "s5" };
 /*
 #define B1
@@ -70,6 +78,12 @@ void setup(){
 
   Serial.begin(9600);
   Serial.println("MCP23007 Interrupt Test");
+
+  pinMode(E1_S, INPUT_PULLUP);
+  pinMode(E1_A, INPUT);
+  pinMode(E1_B, INPUT);
+  
+  
 
   pinMode(arduinoIntPin,INPUT_PULLUP);
 
@@ -146,7 +160,7 @@ void cleanInterrupts(){
  * and you can wait for interrupts while waiting.
  */
 void loop(){
-  
+   attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E1_B), e1_update, CHANGE);
   // enable interrupts before going to sleep/wait
   // And we setup a callback for the arduino INT handler.
   attachInterrupt(0,intCallBack,FALLING);
@@ -160,4 +174,30 @@ void loop(){
   detachInterrupt(0);
   
   if(awakenByInterrupt) handleInterrupt();
+}
+
+void e1_update(){
+  Serial.println("movement");
+  
+  /* WARNING: For this example I've used Serial.println within the interrupt callback. The Serial 
+   * library already uses interrupts which could cause errors. Therefore do not use functions 
+   * of the Serial libray in your interrupt callback.
+   */
+
+  // ROTATION DIRECTION
+  pinAstateCurrent = digitalRead(E1_A);    // Read the current state of Pin A
+  
+  // If there is a minimal movement of 1 step
+  if ((pinAStateLast == LOW) && (pinAstateCurrent == HIGH)) {
+    
+    if (digitalRead(E1_B) == HIGH) {      // If Pin B is HIGH
+      Serial.println("Right");             // Print on screen
+    } else {
+      Serial.println("Left");            // Print on screen
+    }
+    
+  }
+  
+  pinAStateLast = pinAstateCurrent;        // Store the latest read value in the currect state variable
+  
 }
