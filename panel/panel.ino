@@ -28,6 +28,18 @@
 #define D5 1
 #define D6 0
 
+void led_on(int num){
+  if(num <= 6){
+    digitalWrite(num, HIGH);
+  }
+  
+}
+void led_off(int num){
+  if(num <= 6){
+    digitalWrite(num, HIGH);
+  }
+  
+}
 #define S1 11
 #define S2 10
 #define S3 13
@@ -53,12 +65,11 @@
 #define E4_A 17
 #define E4_B 6
 
-/*
-#define B1
-#define B2
-#define B3
-#define B4
-*/
+
+#define B1 19
+#define B2 22
+#define B3 23
+#define B4 24
 
 
 int E1pinAstateCurrent = LOW;                // Current state of Pin A
@@ -79,13 +90,14 @@ char * switches[] = { "s8", "s7", "s2\0", "s1", "s4", "s3", "s6", "s5" };
 //MCP
 Adafruit_MCP23017 mcp;
 byte ledPin=13;
+#define SERIAL_RX_PIN 0
 // Interrupts from the MCP will be handled by this PIN
 byte arduinoIntPin=2;
 volatile boolean awakenByInterruptMCP = false;
 
-volatile boolean serial_available = false;
+volatile boolean serial_to_read = false;
 
-void setup_interruptMCP(int pin){
+void setup_switch_interrMCP(int pin){
   // configuration for a button on port A
   // interrupt will triger when the pin is taken to ground by a pushbutton
   mcp.pinMode(pin, INPUT);
@@ -93,6 +105,11 @@ void setup_interruptMCP(int pin){
   mcp.setupInterruptPin(pin,CHANGE);   
 }
 
+void setup_button_interr(int pin){
+  pinMode(pin, INPUT_PULLUP);
+  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(pin), button_pressed, CHANGE);
+
+}
 void setup(){
 
   Serial.begin(9600);
@@ -117,11 +134,10 @@ void setup(){
   pinMode(E4_A, INPUT);
   pinMode(E4_B, INPUT);
 
-   attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E1_B), e1_update, CHANGE);
-   attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E2_B), e2_update, CHANGE);
-   attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E3_B), e3_update, CHANGE);
-   attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E4_B), e4_update, CHANGE);
-
+  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E1_B), e1_update, CHANGE);
+  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E2_B), e2_update, CHANGE);
+  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E3_B), e3_update, CHANGE);
+  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E4_B), e4_update, CHANGE);
    
   //MCP
   pinMode(arduinoIntPin,INPUT_PULLUP);
@@ -131,15 +147,19 @@ void setup(){
   // INTs will be signaled with a LOW
   mcp.setupInterrupts(true,false,LOW);
 
-  setup_interruptMCP(S1);
-  setup_interruptMCP(S2);
-  setup_interruptMCP(S3);
-  setup_interruptMCP(S4);
-  setup_interruptMCP(S5);
-  setup_interruptMCP(S6);
-  setup_interruptMCP(S7);
-  setup_interruptMCP(S8);
+  setup_switch_interrMCP(S1);
+  setup_switch_interrMCP(S2);
+  setup_switch_interrMCP(S3);
+  setup_switch_interrMCP(S4);
+  setup_switch_interrMCP(S5);
+  setup_switch_interrMCP(S6);
+  setup_switch_interrMCP(S7);
+  setup_switch_interrMCP(S8);
 
+  setup_button_interr(B1);
+  setup_button_interr(B2);
+  setup_button_interr(B3);
+  setup_button_interr(B4);
 
   // We will setup a pin for flashing from the int routine
   pinMode(ledPin, OUTPUT);  // use the p13 LED as debugging
@@ -190,7 +210,7 @@ void cleanInterrupts(){
  * and you can wait for interrupts while waiting.
  */
 void serial_handler(){
-  serial_available = true;
+  serial_to_read = true;
 }
 void read_serial(){
   byte msg[4];
@@ -240,6 +260,19 @@ void loop(){
   detachPinChangeInterrupt(digitalPinToPinChangeInterrupt(SERIAL_RX_PIN));
   if(awakenByInterruptMCP) handleInterrupt();
   if(serial_to_read) read_serial();
+}
+
+void button_pressed(){
+  if(digitalRead(B1) == LOW){
+    Serial.println("b1p");
+  }else if(digitalRead(B2) == LOW){
+    Serial.println("b2p");
+  }else if(digitalRead(B3) == LOW){
+    Serial.println("b3p");
+  }else if(digitalRead(B4) == LOW){
+    Serial.println("b4p");
+  }
+  delay(30);
 }
 
 void e1_update(){
