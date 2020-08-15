@@ -21,33 +21,22 @@
 #include <Adafruit_MCP23017.h>
 //s on pin 21 so connect a button or switch from there to ground
 
-#define D1 5
-#define D2 4
-#define D3 3
-#define D4 2
-#define D5 1
-#define D6 0
+#define D1 0
+#define D2 1
+#define D3 2
+#define D4 3
+#define D5 4
+#define D6 5
 
-void led_on(int num){
-  if(num <= 6){
-    digitalWrite(num, HIGH);
-  }
-  
-}
-void led_off(int num){
-  if(num <= 6){
-    digitalWrite(num, HIGH);
-  }
-  
-}
-#define S1 11
-#define S2 10
-#define S3 13
-#define S4 12
-#define S5 15
-#define S6 14
-#define S7 9
-#define S8 8
+
+#define S1 12
+#define S2 13
+#define S3 14
+#define S4 15
+#define S5 11
+#define S6 10
+#define S7 8
+#define S8 9
 
 #define E1_S 5
 #define E1_A 10
@@ -61,7 +50,7 @@ void led_off(int num){
 #define E3_A 9
 #define E3_B 5
 
-#define E4_S 13
+#define E4_S 14
 #define E4_A 17
 #define E4_B 6
 
@@ -84,12 +73,45 @@ int E3pinAStateLast = E3pinAstateCurrent;      // Last read value of Pin A
 int E4pinAstateCurrent = LOW;                // Current state of Pin A
 int E4pinAStateLast = E4pinAstateCurrent;      // Last read value of Pin A
 
-char * switches[] = { "s8", "s7", "s2\0", "s1", "s4", "s3", "s6", "s5" };
+char * switches[] = { "S7", "S8", "S6", "S5", "S1", "S2", "S3", "S4" };
 
 
 //MCP
 Adafruit_MCP23017 mcp;
-byte ledPin=13;
+
+int led_mapper(int led_num){
+  switch(led_num){
+    case 1:
+      return D1;
+    case 2:
+      return D2;
+    case 3:
+      return D3;
+    case 4:
+      return D4;
+    case 5:
+      return D5;
+    case 6:
+      return D6;   
+   }
+   Serial.println("RRR");
+   return 0;
+}
+
+void led_on(int num){
+  if(num <= 6){
+    mcp.digitalWrite(led_mapper(num), HIGH);
+  }
+  
+}
+void led_off(int num){
+  if(num <= 6){
+    mcp.digitalWrite(led_mapper(num), LOW);
+  }
+  
+}
+
+byte ledPin=LED_BUILTIN;
 #define SERIAL_RX_PIN 0
 // Interrupts from the MCP will be handled by this PIN
 byte arduinoIntPin=2;
@@ -107,7 +129,7 @@ void setup_switch_interrMCP(int pin){
 
 void setup_button_interr(int pin){
   pinMode(pin, INPUT_PULLUP);
-  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(pin), button_pressed, CHANGE);
+  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(pin), button_pressed, FALLING);
 
 }
 void setup(){
@@ -115,38 +137,52 @@ void setup(){
   Serial.begin(9600);
   Serial.println("MCP23007 Interrupt Test");
 
-
-
-  //encoders
-  pinMode(E1_S, INPUT_PULLUP);
-  pinMode(E1_A, INPUT);
-  pinMode(E1_B, INPUT);
   
-  pinMode(E2_S, INPUT_PULLUP);
-  pinMode(E2_A, INPUT);
-  pinMode(E2_B, INPUT);
 
-  pinMode(E3_S, INPUT_PULLUP);
-  pinMode(E3_A, INPUT);
-  pinMode(E3_B, INPUT);
 
-  pinMode(E4_S, INPUT_PULLUP);
-  pinMode(E4_A, INPUT);
-  pinMode(E4_B, INPUT);
-
-  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E1_B), e1_update, CHANGE);
-  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E2_B), e2_update, CHANGE);
-  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E3_B), e3_update, CHANGE);
-  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E4_B), e4_update, CHANGE);
+//  //encoders
+//  pinMode(E1_S, INPUT);
+//  pinMode(E1_A, INPUT);
+//  pinMode(E1_B, INPUT);
+//  
+//  pinMode(E2_S, INPUT);
+//  pinMode(E2_A, INPUT);
+//  pinMode(E2_B, INPUT);
+//
+//  pinMode(E3_S, INPUT);
+//  pinMode(E3_A, INPUT);
+//  pinMode(E3_B, INPUT);
+//
+//  pinMode(E4_S, INPUT);
+//  pinMode(E4_A, INPUT);
+//  pinMode(E4_B, INPUT);
+//
+//  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E1_B), e1_update, CHANGE);
+//  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E2_B), e2_update, CHANGE);
+//  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E3_B), e3_update, CHANGE);
+//  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E4_B), e4_update, CHANGE);
    
   //MCP
-  pinMode(arduinoIntPin,INPUT_PULLUP);
+  pinMode(arduinoIntPin,INPUT);
   mcp.begin();      // use default address 0
-  // We mirror INTA and INTB, so that only one line is required between MCP and Arduino for int reporting
-  // The INTA/B will not be Floating 
-  // INTs will be signaled with a LOW
+  //LEDS
+  mcp.pinMode(D1, OUTPUT);
+  mcp.pinMode(D2, OUTPUT);
+  mcp.pinMode(D3, OUTPUT);
+  mcp.pinMode(D4, OUTPUT);
+  mcp.pinMode(D5, OUTPUT);
+  mcp.pinMode(D6, OUTPUT);
+  mcp.digitalWrite(D1, HIGH);
+  mcp.digitalWrite(D2, HIGH);
+  mcp.digitalWrite(D3, HIGH);
+  mcp.digitalWrite(D4, HIGH);
+  mcp.digitalWrite(D5, HIGH);
+  mcp.digitalWrite(D6, HIGH);
+//  // We mirror INTA and INTB, so that only one line is required between MCP and Arduino for int reporting
+//  // The INTA/B will not be Floating 
+//  // INTs will be signaled with a LOW
   mcp.setupInterrupts(true,false,LOW);
-
+//
   setup_switch_interrMCP(S1);
   setup_switch_interrMCP(S2);
   setup_switch_interrMCP(S3);
@@ -156,20 +192,23 @@ void setup(){
   setup_switch_interrMCP(S7);
   setup_switch_interrMCP(S8);
 
-  setup_button_interr(B1);
-  setup_button_interr(B2);
-  setup_button_interr(B3);
-  setup_button_interr(B4);
+//  setup_button_interr(B1);
+//  setup_button_interr(B2);
+//  setup_button_interr(B3);
+//  setup_button_interr(B4);
 
   // We will setup a pin for flashing from the int routine
   pinMode(ledPin, OUTPUT);  // use the p13 LED as debugging
-  
+  digitalWrite(ledPin, HIGH);
+  delay(250);
+  digitalWrite(ledPin, LOW);
 }
 
 // The int handler will just signal that the int has happen
 // we will do the work from the main loop.
 void intCallBack(){
   awakenByInterruptMCP=true;
+  digitalWrite(ledPin, HIGH);
 }
 
 void handleInterrupt(){
@@ -178,14 +217,17 @@ void handleInterrupt(){
   uint8_t pin=mcp.getLastInterruptPin();
   uint8_t val=mcp.getLastInterruptPinValue();
   if(pin - 8 > 7){
-    Serial.print("RRR");
+    Serial.println("RRR");
   }else{
-    Serial.print(switches[pin]);
+//    Serial.print(pin);
+    Serial.println(switches[pin-8]);
+    Serial.flush();
+//Serial.print(pin);
   }
-    delay(50);
     digitalWrite(ledPin,HIGH);
     delay(50);
     digitalWrite(ledPin,LOW);
+    delay(50);
   // we have to wait for the interrupt condition to finish
   // otherwise we might go to sleep with an ongoing condition and never wake up again.
   // as, an action is required to clear the INT flag, and allow it to trigger again.
@@ -213,10 +255,11 @@ void serial_handler(){
   serial_to_read = true;
 }
 void read_serial(){
-  byte msg[4];
+  char msg[5];
   int cnt = 0;
-  while(Serial.available() < 3){
+  while(Serial.available() < 4){
     if(cnt == 5){
+      serial_to_read = false;
       return;
     }
     delay(10);
@@ -225,41 +268,45 @@ void read_serial(){
   msg[0] = Serial.read();
   msg[1] = Serial.read();
   msg[2] = Serial.read();
-  msg[3] = "\0";
+  msg[3] = Serial.read(); 
+  msg[4] = '\0';
 
-  if(msg[0] = 'd'){
+  if(msg[0] == 'd'){
     int num = msg[1] - 48;
-    if(msg[2] = 'n'){
+    if(msg[2] == 'n'){
       led_on(num);
-    }else if(msg[2] = 'f'){
+    }else if(msg[2] == 'f'){
       led_off(num);
     }
   }
-  
+  Serial.println(msg);
   if(Serial.available() > 0){
     read_serial();
   }
   serial_to_read = false;
 }
 void loop(){
+  Serial.println("loop-up");
    Serial.flush();
    attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(SERIAL_RX_PIN), serial_handler, CHANGE);
   // enable interrupts before going to sleep/wait
   // And we setup a callback for the arduino INT handler.
-  attachInterrupt(0,intCallBack,FALLING);
+  attachInterrupt(digitalPinToInterrupt(2),intCallBack,FALLING);
 
   
   // Simulate a deep sleep
-  while(!awakenByInterruptMCP);
+  while(!(awakenByInterruptMCP || serial_to_read));
   // Or sleep the arduino, this lib is great, if you have it.
   //LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);
+  Serial.println("after while");
 
   
   // disable interrupts while handling them.
-  detachInterrupt(0);
+  detachInterrupt(digitalPinToInterrupt(2));
   detachPinChangeInterrupt(digitalPinToPinChangeInterrupt(SERIAL_RX_PIN));
   if(awakenByInterruptMCP) handleInterrupt();
   if(serial_to_read) read_serial();
+  Serial.println("loop-down");
 }
 
 void button_pressed(){
@@ -273,6 +320,7 @@ void button_pressed(){
     Serial.println("b4p");
   }
   delay(30);
+  while(!(digitalRead(B1) && digitalRead(B2) && digitalRead(B3) && digitalRead(B4)));
 }
 
 void e1_update(){
