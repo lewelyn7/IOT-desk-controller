@@ -27,7 +27,7 @@
 #define D4 3
 #define D5 4
 #define D6 5
-
+#define SM 7
 
 #define S1 12
 #define S2 13
@@ -38,27 +38,27 @@
 #define S7 8
 #define S8 9
 
-#define E1_S 5
-#define E1_A 10
-#define E1_B 9
+#define E1_S 8
+#define E1_A A6
+#define E1_B 3
 
-#define E2_S 11
-#define E2_A 8
+#define E2_S 9
+#define E2_A A7
 #define E2_B 4
 
-#define E3_S 10
-#define E3_A 9
+#define E3_S 12
+#define E3_A 10
 #define E3_B 5
 
-#define E4_S 14
-#define E4_A 17
+#define E4_S 7
+#define E4_A 11
 #define E4_B 6
 
 
-#define B1 19
-#define B2 22
-#define B3 23
-#define B4 24
+#define B1 A0
+#define B2 A1
+#define B3 A2
+#define B4 A3
 
 
 int E1pinAstateCurrent = LOW;                // Current state of Pin A
@@ -73,7 +73,7 @@ int E3pinAStateLast = E3pinAstateCurrent;      // Last read value of Pin A
 int E4pinAstateCurrent = LOW;                // Current state of Pin A
 int E4pinAStateLast = E4pinAstateCurrent;      // Last read value of Pin A
 
-char * switches[] = { "S7", "S8", "S6", "S5", "S1", "S2", "S3", "S4" };
+char * switches[] = { "SM", "S7", "S8", "S6", "S5", "S1", "S2", "S3", "S4" };
 
 
 //MCP
@@ -119,6 +119,20 @@ volatile boolean awakenByInterruptMCP = false;
 
 volatile boolean serial_to_read = false;
 
+volatile boolean button_to_read = false;
+
+volatile boolean encoder_to_send = false;
+
+volatile boolean enc1_switch_interr = false;
+volatile boolean enc2_switch_interr = false;
+volatile boolean enc3_switch_interr = false;
+volatile boolean enc4_switch_interr = false;
+volatile boolean enc_switch_global = false;
+
+
+volatile char e_num;
+volatile char e_dir;
+
 void setup_switch_interrMCP(int pin){
   // configuration for a button on port A
   // interrupt will triger when the pin is taken to ground by a pushbutton
@@ -126,11 +140,37 @@ void setup_switch_interrMCP(int pin){
   mcp.pullUp(pin, HIGH);  // turn on a 100K pullup internally
   mcp.setupInterruptPin(pin,CHANGE);   
 }
-
+void button_action(){
+  button_to_read = true;
+  digitalWrite(ledPin, HIGH);
+}
 void setup_button_interr(int pin){
   pinMode(pin, INPUT_PULLUP);
-  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(pin), button_pressed, FALLING);
+   attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(pin), button_action, FALLING);
 
+}
+void setup_encoder(int A, int B, int S, void (*bISR)(), void *(*switchISR)()){
+  pinMode(S, INPUT_PULLUP);
+  pinMode(A, INPUT_PULLUP);
+  pinMode(B, INPUT_PULLUP);
+  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(B), bISR, CHANGE);
+  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(S), switchISR, FALLING);
+}
+void enc1_switch_handler(){
+  enc1_switch_interr = true;
+  enc_switch_global = true;
+}
+void enc2_switch_handler(){
+  enc2_switch_interr = true;
+  enc_switch_global = true;
+}
+void enc3_switch_handler(){
+  enc3_switch_interr = true;
+  enc_switch_global = true;
+}
+void enc4_switch_handler(){
+  enc4_switch_interr = true;
+  enc_switch_global = true;
 }
 void setup(){
 
@@ -140,27 +180,11 @@ void setup(){
   
 
 
-//  //encoders
-//  pinMode(E1_S, INPUT);
-//  pinMode(E1_A, INPUT);
-//  pinMode(E1_B, INPUT);
-//  
-//  pinMode(E2_S, INPUT);
-//  pinMode(E2_A, INPUT);
-//  pinMode(E2_B, INPUT);
-//
-//  pinMode(E3_S, INPUT);
-//  pinMode(E3_A, INPUT);
-//  pinMode(E3_B, INPUT);
-//
-//  pinMode(E4_S, INPUT);
-//  pinMode(E4_A, INPUT);
-//  pinMode(E4_B, INPUT);
-//
-//  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E1_B), e1_update, CHANGE);
-//  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E2_B), e2_update, CHANGE);
-//  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E3_B), e3_update, CHANGE);
-//  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(E4_B), e4_update, CHANGE);
+
+  setup_encoder(E1_A, E1_B, E1_S, e1_update, enc1_switch_handler);
+  setup_encoder(E2_A, E2_B, E2_S, e2_update, enc2_switch_handler); 
+  setup_encoder(E3_A, E3_B, E3_S, e3_update, enc3_switch_handler);
+  setup_encoder(E4_A, E4_B, E4_S, e4_update, enc4_switch_handler);
    
   //MCP
   pinMode(arduinoIntPin,INPUT);
@@ -191,11 +215,11 @@ void setup(){
   setup_switch_interrMCP(S6);
   setup_switch_interrMCP(S7);
   setup_switch_interrMCP(S8);
-
-//  setup_button_interr(B1);
-//  setup_button_interr(B2);
-//  setup_button_interr(B3);
-//  setup_button_interr(B4);
+//
+  setup_button_interr(B1);
+  setup_button_interr(B2);
+  setup_button_interr(B3);
+  setup_button_interr(B4);
 
   // We will setup a pin for flashing from the int routine
   pinMode(ledPin, OUTPUT);  // use the p13 LED as debugging
@@ -216,7 +240,7 @@ void handleInterrupt(){
   // Get more information from the MCP from the INT
   uint8_t pin=mcp.getLastInterruptPin();
   uint8_t val=mcp.getLastInterruptPinValue();
-  if(pin - 8 > 7){
+  if(pin - 8 > 6){
     Serial.println("RRR");
   }else{
 //    Serial.print(pin);
@@ -286,7 +310,7 @@ void read_serial(){
   serial_to_read = false;
 }
 void loop(){
-  Serial.println("loop-up");
+//  Serial.println("loop-up");
    Serial.flush();
    attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(SERIAL_RX_PIN), serial_handler, CHANGE);
   // enable interrupts before going to sleep/wait
@@ -295,10 +319,10 @@ void loop(){
 
   
   // Simulate a deep sleep
-  while(!(awakenByInterruptMCP || serial_to_read));
+  while(!(awakenByInterruptMCP || serial_to_read || button_to_read || encoder_to_send || enc_switch_global));
   // Or sleep the arduino, this lib is great, if you have it.
   //LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);
-  Serial.println("after while");
+//  Serial.println("after while");
 
   
   // disable interrupts while handling them.
@@ -306,7 +330,10 @@ void loop(){
   detachPinChangeInterrupt(digitalPinToPinChangeInterrupt(SERIAL_RX_PIN));
   if(awakenByInterruptMCP) handleInterrupt();
   if(serial_to_read) read_serial();
-  Serial.println("loop-down");
+  if(button_to_read) button_pressed();
+  if(encoder_to_send) encoder_handler();
+  if(enc_switch_global) enc_switch_action();
+//  Serial.println("loop-down");
 }
 
 void button_pressed(){
@@ -321,6 +348,47 @@ void button_pressed(){
   }
   delay(30);
   while(!(digitalRead(B1) && digitalRead(B2) && digitalRead(B3) && digitalRead(B4)));
+  button_to_read = false;
+}
+
+void encoder_handler(){
+  Serial.print('e');
+  Serial.print(e_num);
+  Serial.print(e_dir);
+  Serial.println();
+  encoder_to_send = false;
+}
+void enc_switch_action(){
+  if(enc1_switch_interr){
+    Serial.println("e1s");
+  }
+  if(enc2_switch_interr){
+    Serial.println("e2s");
+    enc2_switch_interr = false;
+  }
+  if(enc3_switch_interr){
+    Serial.print("e3s");
+    Serial.print(digitalRead(E3_S));
+    Serial.println();
+  }
+  if(enc4_switch_interr){
+    Serial.println("e4s");
+    enc4_switch_interr = false;
+  }
+  while(!(digitalRead(E1_S) && digitalRead(E2_S) && digitalRead(E3_S) && digitalRead(E4_S))){
+//    Serial.print(digitalRead(E1_S));
+//    Serial.print(digitalRead(E2_S));
+//    Serial.print(digitalRead(E3_S));
+//    Serial.print(digitalRead(E4_S));
+//    Serial.println();
+//    delay(1);
+  }
+  delay(50);
+  enc1_switch_interr = false;
+  enc2_switch_interr = false;
+  enc3_switch_interr = false;
+  enc_switch_global = false;
+  enc4_switch_interr = false;
 }
 
 void e1_update(){
@@ -329,17 +397,19 @@ void e1_update(){
    * library already uses interrupts which could cause errors. Therefore do not use functions 
    * of the Serial libray in your interrupt callback.
    */
+   digitalWrite(ledPin, HIGH);
 
   // ROTATION DIRECTION
-  E1pinAstateCurrent = digitalRead(E1_A);    // Read the current state of Pin A
-  
+  E1pinAstateCurrent = analogRead(E1_A) > 100 ? HIGH : LOW;    // on Pro Mini you cant use digitalRead on pins A6 and A7. Dont know why.
+
   // If there is a minimal movement of 1 step
   if ((E1pinAStateLast == LOW) && (E1pinAstateCurrent == HIGH)) {
-    
+    e_num = '1';
+    encoder_to_send = true;
     if (digitalRead(E1_B) == HIGH) {      // If Pin B is HIGH
-      Serial.println("e1r");             // Print on screen
+       e_dir = 'r';          // Print on screen
     } else {
-      Serial.println("e1l");            // Print on screen
+      e_dir = 'l';            // Print on screen
     }
     
   }
@@ -348,15 +418,16 @@ void e1_update(){
   
 }
 void e2_update(){
-  E2pinAstateCurrent = digitalRead(E2_A);    // Read the current state of Pin A
+  E2pinAstateCurrent = analogRead(E2_A) > 100 ? HIGH : LOW;    // on Pro Mini you cant use digitalRead on pins A6 and A7. Dont know why.
   
   // If there is a minimal movement of 1 step
   if ((E2pinAStateLast == LOW) && (E2pinAstateCurrent == HIGH)) {
-    
+    e_num = '2';    
+    encoder_to_send = true;
     if (digitalRead(E2_B) == HIGH) {      // If Pin B is HIGH
-      Serial.println("e2r");             // Print on screen
+       e_dir = 'r';          // Print on screen
     } else {
-      Serial.println("e2l");            // Print on screen
+      e_dir = 'l';            // Print on screen
     }
     
   }
@@ -368,11 +439,12 @@ void e3_update(){
   
   // If there is a minimal movement of 1 step
   if ((E3pinAStateLast == LOW) && (E3pinAstateCurrent == HIGH)) {
-    
+      encoder_to_send = true;
+      e_num = '3';
     if (digitalRead(E3_B) == HIGH) {      // If Pin B is HIGH
-      Serial.println("e3r");             // Print on screen
+       e_dir = 'r';          // Print on screen
     } else {
-      Serial.println("e3l");            // Print on screen
+      e_dir = 'l';            // Print on screen
     }
     
   }
@@ -383,11 +455,12 @@ void e4_update(){
   E4pinAstateCurrent = digitalRead(E4_A);    // Read the current state of Pin A
   // If there is a minimal movement of 1 step
   if ((E4pinAStateLast == LOW) && (E4pinAstateCurrent == HIGH)) {
-    
+    e_num = '4';
+    encoder_to_send = true;
     if (digitalRead(E4_B) == HIGH) {      // If Pin B is HIGH
-      Serial.println("e4r");             // Print on screen
+       e_dir = 'r';          // Print on screen
     } else {
-      Serial.println("e4l");            // Print on screen
+      e_dir = 'l';            // Print on screen
     }
     
   }
