@@ -60,6 +60,8 @@
 #define B3 A2
 #define B4 A3
 
+//NIE UZYWAC INPUT_PULLUP DO PRZERWAN TYPU INT0/1
+
 
 int E1pinAstateCurrent = LOW;                // Current state of Pin A
 int E1pinAStateLast = E1pinAstateCurrent;      // Last read value of Pin A
