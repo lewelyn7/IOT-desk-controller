@@ -1,6 +1,5 @@
 #include "FastLED.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // RGB Calibration code
@@ -33,6 +32,66 @@
 #define CLOCK_PIN 13
 
 CRGB leds[NUM_LEDS];
+
+//enum MenuStates{
+//  
+//};
+//class Menu
+//{
+//  
+//};
+class Animation
+{
+  public:
+  uint8_t fps;
+  Animation(uint8_t frames_per_sec){
+    fps = frames_per_sec;
+  }
+  virtual void tick(){
+    
+  }
+};
+class StartAnimation: public Animation
+{
+  public:
+  uint8_t i;
+  enum stages{
+    LoadingStrip, BlinkDown, BlinkUp, Ready
+  };
+  stages stage;
+  StartAnimation(uint8_t frames)
+    : Animation(frames)
+    {
+      stage = LoadingStrip;
+  }
+  void tick(){
+   if(stage == LoadingStrip){
+    leds[(NUM_LEDS/2+i)%NUM_LEDS].setHSV(10,200, 200);
+    leds[NUM_LEDS/2-(i%NUM_LEDS)].setHSV(10, 200, 200);
+   }else if(stage == BlinkDown || stage == BlinkUp){
+     if(stage == BlinkDown){
+       fadeToBlackBy(leds,NUM_LEDS, 10);
+     }else{
+       fadeLightBy(leds, NUM_LEDS, 30);
+     }
+     if(stage == BlinkDown && leds[0].r == 0){
+       stage = BlinkUp;
+     }else if( stage == BlinkUp && leds[0].r == 255){
+       stage = BlinkDown;
+     }
+   }
+   if(i == NUM_LEDS){
+     stage = BlinkDown;
+   }
+
+   
+   i++;
+  }
+};
+//class AnimationsManager
+//{
+//  
+//};
 
 void setup() {
     Serial.begin(9600);
@@ -90,6 +149,9 @@ void setup() {
 }
 int colorArray[3];
 void loop() {
+    if(Serial.available() >= 6){
+      
+    }
     if(Serial.available() >= 4){
       Serial.println("czytam");
       colorArray[0] = Serial.parseInt();
