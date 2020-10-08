@@ -1,45 +1,35 @@
 #include "FastLED.h"
+#include <arduino-timer.h>
+#include <cppQueue.h>
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// RGB Calibration code
-//
-// Use this sketch to determine what the RGB ordering for your chipset should be.  Steps for setting up to use:
-
-// * Uncomment the line in setup that corresponds to the LED chipset that you are using.  (Note that they
-//   all explicitly specify the RGB order as RGB)
-// * Define DATA_PIN to the pin that data is connected to.
-// * (Optional) if using software SPI for chipsets that are SPI based, define CLOCK_PIN to the clock pin
-// * Compile/upload/run the sketch
-
-// You should see six leds on.  If the RGB ordering is correct, you should see 1 red led, 2 green
-// leds, and 3 blue leds.  If you see different colors, the count of each color tells you what the
-// position for that color in the rgb orering should be.  So, for example, if you see 1 Blue, and 2
-// Red, and 3 Green leds then the rgb ordering should be BRG (Blue, Red, Green).
-
-// You can then test this ordering by setting the RGB ordering in the addLeds line below to the new ordering
-// and it should come out correctly, 1 red, 2 green, and 3 blue.
-//
-//////////////////////////////////////////////////
+Timer<10, millis> timer;
 
 #define NUM_LEDS 120
 
-// For led chips like WS2812, which have a data line, ground, and power, you just
-// need to define DATA_PIN.  For led chipsets that are SPI based (four wires - data, clock,
-// ground, and power), like the LPD8806 define both DATA_PIN and CLOCK_PIN
-// Clock pin only needed for SPI based chipsets when not using hardware SPI
 #define DATA_PIN 5
 #define CLOCK_PIN 13
-
 CRGB leds[NUM_LEDS];
 
-//enum MenuStates{
-//  
-//};
-//class Menu
-//{
-//  
-//};
+enum class MenuStates{
+  Starting, Started
+};
+
+class Menu
+{
+  public:
+  MenuStates state;
+  Menu(void){
+    state = MenuStates::Starting;
+  }
+  void set(MenuStates mstate){
+    state = mstate;
+  }
+  void get(){
+    return state;
+  }
+};
+Menu MENU();
+
 class Animation
 {
   public:
@@ -50,11 +40,51 @@ class Animation
   virtual void tick(){
     
   }
+  virtual bool done(){
+    return false;
+  }
+};
+class StaticAnimation: public Animation
+{
+  public:
+  uint16_t i;
+  uint8_t h;
+  uint8_t s;
+  uint8_t v;
+  StaticAnimation(uint8_t frames)
+    : Animation(frames)
+    {
+      i = 0;
+      h = 60;
+      s = 200;
+      v = 100;
+  }  
+  void tick(){
+
+    leds[(NUM_LEDS/2+i)%NUM_LEDS].setHSV(h,s,v);
+    leds[NUM_LEDS/2-(i%(NUM_LEDS/2+1))].setHSV(h,s,v);
+    if(i == NUM_LEDS/2){
+      i = 0;
+    }
+    i++;
+  }
+  void setHSV(uint8_t &h1, uint8_t &s1, uint8_t &v1){
+    h = h1;
+    s = s1;
+    v = v1;
+  }
+  
 };
 class StartAnimation: public Animation
 {
+  private:
+    bool done_status;
+    const uint8_t h = 96;
+    const uint8_t s = 200;
+    const uint8_t v = 200;
   public:
-  uint8_t i;
+  uint16_t i;
+  uint8_t blink_counter;
   enum stages{
     LoadingStrip, BlinkDown, BlinkUp, Ready
   };
@@ -63,95 +93,82 @@ class StartAnimation: public Animation
     : Animation(frames)
     {
       stage = LoadingStrip;
+      i = 0;
+      done_status = false;
+      blink_counter = 0;
   }
   void tick(){
    if(stage == LoadingStrip){
-    leds[(NUM_LEDS/2+i)%NUM_LEDS].setHSV(10,200, 200);
-    leds[NUM_LEDS/2-(i%NUM_LEDS)].setHSV(10, 200, 200);
-   }else if(stage == BlinkDown || stage == BlinkUp){
-     if(stage == BlinkDown){
-       fadeToBlackBy(leds,NUM_LEDS, 10);
-     }else{
-       fadeLightBy(leds, NUM_LEDS, 30);
-     }
-     if(stage == BlinkDown && leds[0].r == 0){
-       stage = BlinkUp;
-     }else if( stage == BlinkUp && leds[0].r == 255){
-       stage = BlinkDown;
-     }
-   }
-   if(i == NUM_LEDS){
+    leds[(NUM_LEDS/2+i)%NUM_LEDS].setHSV(h,s,v);
+    leds[NUM_LEDS/2-(i%NUM_LEDS/2)].setHSV(h,s,v);
+       if(i == NUM_LEDS/2){
      stage = BlinkDown;
+     i = 0;
    }
+   }
+   else if(stage == BlinkDown || stage == BlinkUp){
+     if(stage == BlinkDown){
+       for(uint8_t j = 0; j < NUM_LEDS; j++) leds[j].setHSV(h,s,v-(i%v));
+     }else{
+       for(uint8_t j = 0; j < NUM_LEDS; j++) leds[j].setHSV(h,s,0 + (i%v));
+     }
+     if(blink_counter > 4){
+      done_status = true;
+     }
+     if(stage == BlinkDown && v - 1 == (i%v)){
+       stage = BlinkUp;
+       blink_counter++;
+     }else if( stage == BlinkUp && i%v == v-1){
+       stage = BlinkDown;
+       blink_counter++;
+     }
+   }
+
 
    
    i++;
   }
+  bool done(){
+    return done_status;
+  }
 };
-//class AnimationsManager
-//{
-//  
-//};
-
-void setup() {
-    Serial.begin(9600);
-    // sanity check delay - allows reprogramming if accidently blowing power w/leds
-    delay(2000);
-
-    // Uncomment/edit one of the following lines for your leds arrangement.
-    // ## Clockless types ##
-    // FastLED.addLeds<SM16703, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<TM1829, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<TM1812, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<TM1809, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<TM1804, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<TM1803, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<UCS1903, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<UCS1903B, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<UCS1904, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<UCS2903, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<WS2812, DATA_PIN, RGB>(leds, NUM_LEDS);  // GRB ordering is typical
-    // FastLED.addLeds<WS2852, DATA_PIN, RGB>(leds, NUM_LEDS);  // GRB ordering is typical
-     FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);  // GRB ordering is typical
-    // FastLED.addLeds<GS1903, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<SK6812, DATA_PIN, RGB>(leds, NUM_LEDS);  // GRB ordering is typical
-    // FastLED.addLeds<SK6822, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<APA106, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<PL9823, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<SK6822, DATA_PIN, RGB>(leds, NUM_LEDS);
-//     FastLED.addLeds<WS2811, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<WS2813, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<APA104, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<WS2811_400, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<GE8822, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<GW6205, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<GW6205_400, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<LPD1886, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<LPD1886_8BIT, DATA_PIN, RGB>(leds, NUM_LEDS);
-    // ## Clocked (SPI) types ##
-    // FastLED.addLeds<LPD6803, DATA_PIN, CLOCK_PIN, RGB>(leds, NUM_LEDS);  // GRB ordering is typical
-    // FastLED.addLeds<LPD8806, DATA_PIN, CLOCK_PIN, RGB>(leds, NUM_LEDS);  // GRB ordering is typical
-    // FastLED.addLeds<WS2801, DATA_PIN, CLOCK_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<WS2803, DATA_PIN, CLOCK_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<SM16716, DATA_PIN, CLOCK_PIN, RGB>(leds, NUM_LEDS);
-    // FastLED.addLeds<P9813, DATA_PIN, CLOCK_PIN, RGB>(leds, NUM_LEDS);  // BGR ordering is typical
-    // FastLED.addLeds<DOTSTAR, DATA_PIN, CLOCK_PIN, RGB>(leds, NUM_LEDS);  // BGR ordering is typical
-    // FastLED.addLeds<APA102, DATA_PIN, CLOCK_PIN, RGB>(leds, NUM_LEDS);  // BGR ordering is typical
-    // FastLED.addLeds<SK9822, DATA_PIN, CLOCK_PIN, RGB>(leds, NUM_LEDS);  // BGR ordering is typical
-
-//     FastLED.setBrightness(CRGB(255,255,255));
-    FastLED.setCorrection(TypicalLEDStrip);
-    FastLED.setTemperature(Halogen);
-    for(int i = 0; i < NUM_LEDS; i++){
-      leds[i] = CRGB(0,0,0);
+class AnimationsManager
+{
+  private:
+    Animation *curr;
+  public:
+  Queue *qu;
+  AnimationsManager(Animation *anim){
+    qu = new Queue(sizeof(curr), 10, FIFO);
+    curr = anim;
+  }
+  void push(Animation *anim){
+    qu->push(&anim);
+  }
+  void pop(){
+    Animation anim();
+    qu->pop(&anim);
+  }
+  void tick(){
+    curr->tick();
+    if(curr->done()){
+      Serial.println("next");
+      next();
     }
     FastLED.show();
-}
-int colorArray[3];
-void loop() {
-    if(Serial.available() >= 6){
-      
-    }
+  }
+  void next(){
+    qu->pop(&curr);
+  }
+};
+
+
+
+uint8_t colorArray[3];
+Animation *anim;
+AnimationsManager *animManager;
+StaticAnimation *static_anim;
+bool serial_task(void){
     if(Serial.available() >= 4){
       Serial.println("czytam");
       colorArray[0] = Serial.parseInt();
@@ -164,12 +181,41 @@ void loop() {
       Serial.print(colorArray[2]);
       Serial.println("przeczytalem");
       Serial.print(Serial.available());
-    for(int i = 0; i < NUM_LEDS; i++){
-      leds[i  ] = CRGB(colorArray[0], colorArray[1], colorArray[2]);
-    }
-    FastLED.show();
+      static_anim->setHSV(colorArray[0], colorArray[1], colorArray[2]);
+
+}
+  return true;
+
+}
+
+bool animation_task(void){
+  animManager->tick();
+  return true;
+}
+void setup() {
+    static_anim =  new StaticAnimation(60);
+    anim = new StartAnimation(60);
+    animManager = new AnimationsManager(anim);
+    animManager->push(static_anim);
+    Serial.begin(9600);
+    // sanity check delay - allows reprogramming if accidently blowing power w/leds
+    delay(2000);
+
+    FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);  // GRB ordering is typical
+
     FastLED.setCorrection(TypicalLEDStrip);
-    FastLED.setTemperature(Halogen);
+    for(int i = 0; i < NUM_LEDS; i++){
+      leds[i] = CRGB(0,0,0);
     }
+    leds[0] = CRGB(0, 0, 100);
+    FastLED.show();
+    timer.every(20, animation_task);
+    timer.every(30, serial_task);
+}
+void loop() {
+      timer.tick();
+//    animManager->tick();
+//    FastLED.show();
+//    delay(20);
 
 }
