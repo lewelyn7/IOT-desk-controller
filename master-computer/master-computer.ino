@@ -102,8 +102,12 @@ class NotificationLayer: public Animation
 {
   public:
   uint16_t i;
+  uint8_t r;
+  uint8_t g;
+  uint8_t b;
 
   bool muted = true;
+  bool switched = false;
   NotificationLayer(uint8_t frames)
     : Animation(frames)
     {
@@ -112,22 +116,34 @@ class NotificationLayer: public Animation
   }  
   void tick(){
 
-    if(muted){
-  
-    }else{
+    if(muted && switched){
+      for(uint8_t j = 38; j < 43; j++){
+        leds[j].r = r;
+        leds[j].g = g;
+        leds[j].b = b;
+      }
+
+      switched = false;
+    }else if(muted == false){
+      r = leds[37].r;
+      g = leds[37].g;
+      b = leds[37].b;
       for(uint8_t j = 38; j < 43; j++){
         global_set_hsv(j, 10, 200, 200);
         
       }
+      switched = false;
   
     }
     i++;
   }
   void mute(){
     muted = true;
+    switched = true;
   }
   void unmute(){
     muted = false;
+    switched = true;
   }
 };
 class StartAnimation: public Animation
