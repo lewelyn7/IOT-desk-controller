@@ -11,9 +11,9 @@ Timer<10, millis> timer;
 CRGB leds[NUM_LEDS];
 void global_set_hsv(uint8_t i, uint8_t h, uint8_t s, uint8_t v){
   if(i < 59){
-    leds[i].setHSV((h+6)%255,s,v);
+    leds[i].setHSV((h+6)%256,s%256,v%256);
   }else{
-    leds[i].setHSV(h,s,v);
+    leds[i].setHSV(h%256,s%256,v%256);
   }
 }
 enum class MenuStates{
@@ -86,6 +86,10 @@ class StaticAnimation: public Animation
     s = s1;
     v = v1;
   }
+  void setV(uint8_t &v1){
+    v = v1;
+  }
+  
   void mute(){
     global_set_hsv(40, 10, 200, 200);
     global_set_hsv(41, 10, 200, 200);
@@ -225,7 +229,7 @@ class AnimationsManager
   void tick(){
     curr->tick();
     if(curr->done()){
-      Serial.println("next");
+//      Serial.println("next");
       next();
     }
     notification->tick();
@@ -261,7 +265,7 @@ bool serial_task(void){
       
     }
     if(serial_msg_ready){
-      Serial.println("Serial");
+      //Serial.println("Serial");
       if(MENU.serial_state == SerialStates::Ready){
         if(serial_buffer[0] == 'c'){
           serial_buffer[4] = '\0';
@@ -280,6 +284,36 @@ bool serial_task(void){
          notify_layer->mute();
         }else if(serial_buffer[0] == 'u'){
           notify_layer->unmute();
+        }else if(serial_buffer[0] == 'S'){
+          if(serial_buffer[1] == '1' && serial_buffer[2] == 'u'){
+            if(static_anim->v == 0) {
+              static_anim->v = 200;
+              Serial.println("d1n");
+            }
+            else{
+              static_anim->v = 0;
+              Serial.println("d1f");
+            }
+          }
+        }
+        else if(serial_buffer[0] == 'e' && serial_buffer[1] == '1'){
+          if(serial_buffer[2] == 'r'){
+            static_anim->h+=5;
+          }else if(serial_buffer[2] == 'l'){
+            static_anim->h-=5;
+          }
+        }else if(serial_buffer[0] == 'e' && serial_buffer[1] == '3'){
+          if(serial_buffer[2] == 'r'){
+            static_anim->s+=5;
+          }else if(serial_buffer[2] == 'l'){
+            static_anim->s-=5;
+          }
+        }else if(serial_buffer[0] == 'e' && serial_buffer[1] == '4'){
+          if(serial_buffer[2] == 'r'){
+            static_anim->v+=5;
+          }else if(serial_buffer[2] == 'l'){
+            static_anim->v-=5;
+          }
         }
       }
       serial_msg_ready = false;
@@ -304,6 +338,12 @@ void setup() {
     Serial.begin(9600);
     // sanity check delay - allows reprogramming if accidently blowing power w/leds
     delay(2000);
+    Serial.println("d1f");
+    Serial.println("d2f");
+    Serial.println("d3f");
+    Serial.println("d4f");
+    Serial.println("d5f");
+    Serial.println("d6f");
 
     FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);  // GRB ordering is typical
 

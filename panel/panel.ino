@@ -22,19 +22,20 @@
 //s on pin 21 so connect a button or switch from there to ground
 
 #define D1 0
-#define D2 1
-#define D3 2
-#define D4 3
-#define D5 4
-#define D6 5
+#define D2 2
+#define D3 3
+#define D4 4
+#define D5 5
+#define D6 1
+
 #define SM 7
 
 #define S1 12
-#define S2 13
-#define S3 14
-#define S4 15
-#define S5 11
-#define S6 10
+#define S2 15
+#define S3 14//13//14
+#define S4 10//9//15
+#define S5 11//10//11
+#define S6 13
 #define S7 8
 #define S8 9
 
@@ -75,7 +76,7 @@ int E3pinAStateLast = E3pinAstateCurrent;      // Last read value of Pin A
 int E4pinAstateCurrent = LOW;                // Current state of Pin A
 int E4pinAStateLast = E4pinAstateCurrent;      // Last read value of Pin A
 
-char * switches[] = { "SM", "S7", "S8", "S6", "S5", "S1", "S2", "S3", "S4" };
+char * switches[] = { "S7u", "S8u", "S4u", "S5u", "S1u", "S6u", "S3u", "S2u" };
 
 
 //MCP
@@ -177,7 +178,7 @@ void enc4_switch_handler(){
 void setup(){
 
   Serial.begin(9600);
-  Serial.println("MCP23007 Interrupt Test");
+  Serial.println("pan");
 
   
 
@@ -242,7 +243,9 @@ void handleInterrupt(){
   // Get more information from the MCP from the INT
   uint8_t pin=mcp.getLastInterruptPin();
   uint8_t val=mcp.getLastInterruptPinValue();
-  if(pin - 8 > 6){
+
+  if(pin - 8 > 7){
+    Serial.print(pin);
     Serial.println("RRR");
   }else{
 //    Serial.print(pin);
@@ -251,9 +254,9 @@ void handleInterrupt(){
 //Serial.print(pin);
   }
     digitalWrite(ledPin,HIGH);
-    delay(50);
+    delay(30);                //TO TEST
     digitalWrite(ledPin,LOW);
-    delay(50);
+    delay(30);
   // we have to wait for the interrupt condition to finish
   // otherwise we might go to sleep with an ongoing condition and never wake up again.
   // as, an action is required to clear the INT flag, and allow it to trigger again.
@@ -285,6 +288,7 @@ void read_serial(){
   int cnt = 0;
   while(Serial.available() < 4){
     if(cnt == 5){
+      while(Serial.available() > 0) Serial.read(); // TO TEST
       serial_to_read = false;
       return;
     }
@@ -296,7 +300,8 @@ void read_serial(){
   msg[2] = Serial.read();
   msg[3] = Serial.read(); 
   msg[4] = '\0';
-
+  Serial.read();
+  
   if(msg[0] == 'd'){
     int num = msg[1] - 48;
     if(msg[2] == 'n'){
