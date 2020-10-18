@@ -178,6 +178,7 @@ void enc4_switch_handler(){
 void setup(){
 
   Serial.begin(9600);
+  delay(1000);
   Serial.println("pan");
 
   
@@ -283,10 +284,13 @@ void cleanInterrupts(){
 void serial_handler(){
   serial_to_read = true;
 }
+char serial_buffer[20];
+uint8_t serial_idx = 0;
+bool msg_ready = false;
 void read_serial(){
   char msg[5];
   int cnt = 0;
-  while(Serial.available() < 4){
+  while(Serial.available() < 5){
     if(cnt == 5){
       while(Serial.available() > 0) Serial.read(); // TO TEST
       serial_to_read = false;

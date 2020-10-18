@@ -1,7 +1,9 @@
 #include "FastLED.h"
 #include <arduino-timer.h>
 #include <cppQueue.h>
+#include <SoftwareSerial.h> 
 
+SoftwareSerial panelSerial(4, 3); // rx, tx
 Timer<10, millis> timer;
 
 #define NUM_LEDS 90
@@ -73,11 +75,13 @@ class StaticAnimation: public Animation
       v = 100;
   }  
   void tick(){
-
-    global_set_hsv((NUM_LEDS/2+i)%NUM_LEDS, h,s,v);
-    global_set_hsv(NUM_LEDS/2-(i%(NUM_LEDS/2+1)), h,s,v);
-    if(i == NUM_LEDS/2){
-      i = 0;
+    for(uint8_t j = 0; j < NUM_LEDS; j++){
+      global_set_hsv(j, h,s,v);
+    }
+    if(!i%20){
+     // panelSerial.println("d3f");
+    }else if(!i%10){
+     // panelSerial.println("d3n");
     }
     i++;
   }
@@ -248,24 +252,94 @@ AnimationsManager *animManager;
 StaticAnimation *static_anim;
 NotificationLayer *notify_layer;
 //class serial buffer jest potrzebne
+
+char pserial_buffer[20];
+uint8_t psbuff_next_idx;
+bool pserial_msg_ready = false;
+bool panel_serial_task(void){
+    while(panelSerial.available() > 0){
+      pserial_buffer[psbuff_next_idx] = panelSerial.read();
+      
+//      Serial.print('p');
+//      Serial.print(pserial_buffer[psbuff_next_idx]);
+//      Serial.print('\n');
+      if(pserial_buffer[psbuff_next_idx] == '\n'){
+        pserial_msg_ready = true;
+        pserial_buffer[psbuff_next_idx+1] = '\0';
+      }
+      psbuff_next_idx++;
+      if(psbuff_next_idx == 20){
+        psbuff_next_idx = 0;
+        pserial_msg_ready = true;
+      }
+      
+    }
+    if(pserial_msg_ready){
+      Serial.println("pSerial");
+      Serial.println(pserial_buffer);
+      if(MENU.serial_state == SerialStates::Ready){
+        if(pserial_buffer[0] == 'S'){
+          if(pserial_buffer[1] == '1' && pserial_buffer[2] == 'u'){
+            if(static_anim->v == 0) {
+              static_anim->v = 200;
+              panelSerial.println("d1n");
+            }
+            else{
+              static_anim->v = 0;
+              panelSerial.println("d1f");
+            }
+          }
+        }
+        else if(pserial_buffer[0] == 'e' && pserial_buffer[1] == '1'){
+          if(pserial_buffer[2] == 'r'){
+            static_anim->h+=2;
+          }else if(pserial_buffer[2] == 'l'){
+            static_anim->h-=2;
+          }
+        }else if(pserial_buffer[0] == 'e' && pserial_buffer[1] == '3'){
+          if(pserial_buffer[2] == 'r'){
+            static_anim->s+=5;
+          }else if(pserial_buffer[2] == 'l'){
+            static_anim->s-=5;
+          }
+        }else if(pserial_buffer[0] == 'e' && pserial_buffer[1] == '4'){
+          if(pserial_buffer[2] == 'r'){
+            static_anim->v+=5;
+          }else if(pserial_buffer[2] == 'l'){
+            static_anim->v-=5;
+          }
+        }
+      }
+      pserial_msg_ready = false;
+      psbuff_next_idx = 0;
+}
+  return true;
+}
+
 char serial_buffer[20];
 uint8_t sbuff_next_idx;
 bool serial_msg_ready = false;
 bool serial_task(void){
     while(Serial.available() > 0){
       serial_buffer[sbuff_next_idx] = Serial.read();
+
+//      Serial.print('s');
+//      Serial.print(serial_buffer[sbuff_next_idx]);
+//      Serial.print('\n');
+      
       if(serial_buffer[sbuff_next_idx] == '\n'){
         serial_msg_ready = true;
       }
       sbuff_next_idx++;
       if(sbuff_next_idx == 20){
         sbuff_next_idx = 0;
-        sbuff_next_idx = true;
+        serial_msg_ready = true;
       }
       
     }
     if(serial_msg_ready){
-      //Serial.println("Serial");
+      Serial.println("Serial");
+      Serial.println(serial_buffer);
       if(MENU.serial_state == SerialStates::Ready){
         if(serial_buffer[0] == 'c'){
           serial_buffer[4] = '\0';
@@ -286,21 +360,22 @@ bool serial_task(void){
           notify_layer->unmute();
         }else if(serial_buffer[0] == 'S'){
           if(serial_buffer[1] == '1' && serial_buffer[2] == 'u'){
+            
             if(static_anim->v == 0) {
               static_anim->v = 200;
-              Serial.println("d1n");
+              panelSerial.println("d1n");
             }
             else{
               static_anim->v = 0;
-              Serial.println("d1f");
+              panelSerial.println("d1f");
             }
           }
         }
         else if(serial_buffer[0] == 'e' && serial_buffer[1] == '1'){
           if(serial_buffer[2] == 'r'){
-            static_anim->h+=5;
+            static_anim->h+=2;
           }else if(serial_buffer[2] == 'l'){
-            static_anim->h-=5;
+            static_anim->h-=2;
           }
         }else if(serial_buffer[0] == 'e' && serial_buffer[1] == '3'){
           if(serial_buffer[2] == 'r'){
@@ -320,7 +395,6 @@ bool serial_task(void){
       sbuff_next_idx = 0;
 }
   return true;
-
 }
 
 bool animation_task(void){
@@ -335,15 +409,7 @@ void setup() {
     animManager = new AnimationsManager(anim, notify_layer);
 
     animManager->push(static_anim);
-    Serial.begin(9600);
-    // sanity check delay - allows reprogramming if accidently blowing power w/leds
-    delay(2000);
-    Serial.println("d1f");
-    Serial.println("d2f");
-    Serial.println("d3f");
-    Serial.println("d4f");
-    Serial.println("d5f");
-    Serial.println("d6f");
+
 
     FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);  // GRB ordering is typical
 
@@ -353,13 +419,24 @@ void setup() {
     }
     leds[0] = CRGB(0, 0, 100);
     FastLED.show();
-    timer.every(20, animation_task);
-    timer.every(30, serial_task);
+    Serial.begin(9600);
+    panelSerial.begin(9600);
+    // sanity check delay - allows reprogramming if accidently blowing power w/leds
+    delay(2000);
+    panelSerial.println("d1f");
+    panelSerial.println("d2f");
+    panelSerial.println("d3f");
+    panelSerial.println("d4f");
+    panelSerial.println("d5f");
+    panelSerial.println("d6f");
+    timer.every(15, animation_task);
+    timer.every(10, panel_serial_task);
+    timer.every(10, serial_task);
+
+
 }
 void loop() {
       timer.tick();
-//    animManager->tick();
-//    FastLED.show();
-//    delay(20);
+
 
 }
