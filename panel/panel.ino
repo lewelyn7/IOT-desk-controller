@@ -2,6 +2,7 @@
 #include "Adafruit_MCP23017.h"
 #include "PinChangeInterrupt.h"
 #include <string.h>
+#include "utils.h"
 
 // Install the LowPower library for optional sleeping support.
 // See loop() function comments for details on usage.
@@ -76,7 +77,7 @@ int E3pinAStateLast = E3pinAstateCurrent;      // Last read value of Pin A
 int E4pinAstateCurrent = LOW;                // Current state of Pin A
 int E4pinAStateLast = E4pinAstateCurrent;      // Last read value of Pin A
 
-char * switches[] = { "S7u", "S8u", "S4u", "S5u", "S1u", "S6u", "S3u", "S2u" };
+byte switches[] = { S7U, S8U, S4U, S5U, S1U, S6U, S3U, S2U };
 
 
 //MCP
@@ -97,7 +98,7 @@ int led_mapper(int led_num){
     case 6:
       return D6;   
    }
-   Serial.println("RRR");
+   Serial.write(ERR_CODE);
    return 0;
 }
 
@@ -179,7 +180,7 @@ void setup(){
 
   Serial.begin(9600);
   delay(1000);
-  Serial.println("pan");
+  Serial.write(PANEL_READY);
 
   
 
@@ -246,12 +247,10 @@ void handleInterrupt(){
   uint8_t val=mcp.getLastInterruptPinValue();
 
   if(pin - 8 > 7){
-    Serial.print(pin);
-    Serial.println("RRR");
+    Serial.write(ERR_CODE);
   }else{
 //    Serial.print(pin);
-    Serial.println(switches[pin-8]);
-    Serial.flush();
+    Serial.write(switches[pin-8]);
 //Serial.print(pin);
   }
     digitalWrite(ledPin,HIGH);
@@ -288,36 +287,82 @@ char serial_buffer[20];
 uint8_t serial_idx = 0;
 bool msg_ready = false;
 void read_serial(){
-  char msg[5];
-  int cnt = 0;
-  while(Serial.available() < 5){
-    if(cnt == 5){
-      while(Serial.available() > 0) Serial.read(); // TO TEST
-      serial_to_read = false;
-      return;
-    }
-    delay(10);
-    cnt++;
+  while(Serial.available() > 0){
+    byte rcv = Serial.read();
+    switch(rcv){
+      case D1N:
+        led_on(1);
+        break;
+      case D2N:
+        led_on(2);
+        break;
+      case D3N:
+        led_on(3);
+        break;
+      case D4N:
+        led_on(4);
+        break;
+      case D5N:
+        led_on(5);
+        break;
+      case D6N:
+        led_on(6);
+        break;
+      case D1F:
+        led_off(1);
+        break;
+      case D2F:
+        led_off(2);
+        break;
+      case D3F:
+        led_off(3);
+        break;
+      case D4F:
+        led_off(4);
+        break;
+      case D5F:
+        led_off(5);
+        break;
+      case D6F:
+        led_off(6);
+        break;        
+       }
   }
-  msg[0] = Serial.read();
-  msg[1] = Serial.read();
-  msg[2] = Serial.read();
-  msg[3] = Serial.read(); 
-  msg[4] = '\0';
-  Serial.read();
-  
-  if(msg[0] == 'd'){
-    int num = msg[1] - 48;
-    if(msg[2] == 'n'){
-      led_on(num);
-    }else if(msg[2] == 'f'){
-      led_off(num);
-    }
-  }
-  Serial.println(msg);
-  if(Serial.available() > 0){
-    read_serial();
-  }
+//    if(mcp.digitalRead(D2) == HIGH){
+//    mcp.digitalWrite(D2, LOW);
+//  }else{
+//    mcp.digitalWrite(D2, HIGH);
+//  }
+//  char msg[5];
+//  int cnt = 0;
+//  while(Serial.available() < 5){
+//    if(cnt == 5){
+//      while(Serial.available() > 0) Serial.read(); // TO TEST
+//      serial_to_read = false;
+//      return;
+//    }
+//    delay(10);
+//    cnt++;
+//  }
+//  msg[0] = Serial.read();
+//  msg[1] = Serial.read();
+//  msg[2] = Serial.read();
+//  msg[3] = Serial.read(); 
+//  msg[4] = '\0';
+//  Serial.read();
+//
+//  if(msg[0] == 'd'){
+//    int num = msg[1] - 48;
+//    if(msg[2] == 'n'){
+//      led_on(num);
+//    }else if(msg[2] == 'f'){
+//      led_off(num);
+//    }
+//  }
+////  Serial.println(msg);
+//  if(Serial.available() > 0){
+//    read_serial();
+//  }
   serial_to_read = false;
 }
 void loop(){
@@ -349,13 +394,13 @@ void loop(){
 
 void button_pressed(){
   if(digitalRead(B1) == LOW){
-    Serial.println("b1p");
+    Serial.write(B1P);
   }else if(digitalRead(B2) == LOW){
-    Serial.println("b2p");
+    Serial.write(B2P);
   }else if(digitalRead(B3) == LOW){
-    Serial.println("b3p");
+    Serial.write(B3P);
   }else if(digitalRead(B4) == LOW){
-    Serial.println("b4p");
+    Serial.write(B4P);
   }
   delay(30);
   while(!(digitalRead(B1) && digitalRead(B2) && digitalRead(B3) && digitalRead(B4)));
@@ -363,27 +408,48 @@ void button_pressed(){
 }
 
 void encoder_handler(){
-  Serial.print('e');
-  Serial.print(e_num);
-  Serial.print(e_dir);
-  Serial.println();
+//  Serial.print('e');
+//  Serial.print(e_num);
+//  Serial.print(e_dir);
+//  Serial.println();
+  switch(e_num){
+    case '1':
+      if(e_dir == 'l') Serial.write(E1L);
+      else Serial.write(E1R);
+      break;
+    case '2':
+      if(e_dir == 'l') Serial.write(E2L);
+      else Serial.write(E2R);
+      break;
+    case '3':
+      if(e_dir == 'l') Serial.write(E3L);
+      else Serial.write(E3R);
+      break;
+    case '4':
+      if(e_dir == 'l') Serial.write(E4L);
+      else Serial.write(E4R);
+      break;
+   
+  }
   encoder_to_send = false;
 }
 void enc_switch_action(){
   if(enc1_switch_interr){
-    Serial.println("e1s");
+    Serial.write(E1S);
+    enc1_switch_interr = false;
+
   }
   if(enc2_switch_interr){
-    Serial.println("e2s");
+    Serial.write(E2S);
     enc2_switch_interr = false;
   }
   if(enc3_switch_interr){
-    Serial.print("e3s");
-    Serial.print(digitalRead(E3_S));
-    Serial.println();
+    Serial.write(E3S);
+    enc3_switch_interr = false;
+
   }
   if(enc4_switch_interr){
-    Serial.println("e4s");
+    Serial.write(E4S);
     enc4_switch_interr = false;
   }
   while(!(digitalRead(E1_S) && digitalRead(E2_S) && digitalRead(E3_S) && digitalRead(E4_S))){
