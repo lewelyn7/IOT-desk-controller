@@ -1,5 +1,6 @@
-#define READY_TO_SEND 23
-#define READY_TO_RECEIVE 24
+#define READY_TO_SEND 90
+#define READY_TO_RECEIVE 91
+#define PRECOMMAND 92
 
 #define S1U 1
 #define S2U 2
@@ -44,3 +45,5 @@
 
 #define ERR_CODE 123
 #define PANEL_READY 124
+#define GET_SWITCHES_STATE 125
+#define SWITCHES_SYNCHRO_BEGIN 126

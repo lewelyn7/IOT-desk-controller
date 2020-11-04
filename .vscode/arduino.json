@@ -1,0 +1,8 @@
+{
+    "board": "arduino:avr:pro",
+    "configuration": "cpu=16MHzatmega328",
+    "sketch": "master-computer/master-computer.ino",
+    "output": "../build",
+    "port": "/dev/ttyUSB0"
+
+}

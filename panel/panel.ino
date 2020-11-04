@@ -98,7 +98,7 @@ int led_mapper(int led_num){
     case 6:
       return D6;   
    }
-   Serial.write(ERR_CODE);
+   mySerialWrite(ERR_CODE);
    return 0;
 }
 
@@ -114,7 +114,25 @@ void led_off(int num){
   }
   
 }
-
+void mySerialWrite(byte msg){
+  while(Serial.available() >0) Serial.read();
+  byte rcv;
+  for(int j = 0; j < 3; j++){
+    for(int i =0; i < 15; i++){
+      Serial.write(READY_TO_SEND);
+      delay(2);
+      if(Serial.available() > 0){
+        rcv = Serial.read();
+        break;
+      }
+    }
+    if(rcv == READY_TO_RECEIVE){
+      Serial.write(PRECOMMAND);
+      Serial.write(msg);
+      return;
+    }
+  }
+}
 byte ledPin=LED_BUILTIN;
 #define SERIAL_RX_PIN 0
 // Interrupts from the MCP will be handled by this PIN
@@ -176,11 +194,19 @@ void enc4_switch_handler(){
   enc4_switch_interr = true;
   enc_switch_global = true;
 }
+void send_switches_state(){
+  mySerialWrite(SWITCHES_SYNCHRO_BEGIN);
+  int swPins[8] = {S1, S2, S3, S4, S5, S6, S7, S8};
+  for(int i = 0; i < 7; i++){
+    if(mcp.digitalRead(swPins[i]) == 0) mySerialWrite(switches[swPins[i]-8]); 
+  }
+  if(mcp.digitalRead(swPins[7]) == 1) mySerialWrite(switches[swPins[7]-8]); 
+  Serial.flush();
+}
 void setup(){
 
   Serial.begin(9600);
   delay(1000);
-  Serial.write(PANEL_READY);
 
   
 
@@ -231,6 +257,22 @@ void setup(){
   digitalWrite(ledPin, HIGH);
   delay(250);
   digitalWrite(ledPin, LOW);
+  for(int i = 1; i <= 6; i++){
+    led_on(i);
+  }
+  delay(500);
+  for(int i = 1; i <= 6; i++){
+    led_off(i);
+  }
+  delay(250);
+  for(int i = 0; i <= 7; i++){
+    led_off(i);
+    led_on(i+1);
+    delay(150);
+  }
+
+  // send_switches_state();
+  mySerialWrite(PANEL_READY);
 }
 
 // The int handler will just signal that the int has happen
@@ -247,16 +289,16 @@ void handleInterrupt(){
   uint8_t val=mcp.getLastInterruptPinValue();
 
   if(pin - 8 > 7){
-    Serial.write(ERR_CODE);
+    mySerialWrite(ERR_CODE);
   }else{
 //    Serial.print(pin);
-    Serial.write(switches[pin-8]);
+    mySerialWrite(switches[pin-8]);
 //Serial.print(pin);
   }
-    digitalWrite(ledPin,HIGH);
-    delay(30);                //TO TEST
-    digitalWrite(ledPin,LOW);
-    delay(30);
+//    digitalWrite(ledPin,HIGH);
+//    delay(30);                //TO TEST
+//    digitalWrite(ledPin,LOW);
+//    delay(30);
   // we have to wait for the interrupt condition to finish
   // otherwise we might go to sleep with an ongoing condition and never wake up again.
   // as, an action is required to clear the INT flag, and allow it to trigger again.
@@ -287,6 +329,11 @@ char serial_buffer[20];
 uint8_t serial_idx = 0;
 bool msg_ready = false;
 void read_serial(){
+//      digitalWrite(ledPin,HIGH);
+//    delay(30);                //TO TEST
+//    digitalWrite(ledPin,LOW);
+//    delay(30);
+  delay(5);
   while(Serial.available() > 0){
     byte rcv = Serial.read();
     switch(rcv){
@@ -325,7 +372,10 @@ void read_serial(){
         break;
       case D6F:
         led_off(6);
-        break;        
+        break;
+      case GET_SWITCHES_STATE:
+        send_switches_state();
+        break;
        }
   }
 //    if(mcp.digitalRead(D2) == HIGH){
@@ -384,23 +434,33 @@ void loop(){
   // disable interrupts while handling them.
   detachInterrupt(digitalPinToInterrupt(2));
   detachPinChangeInterrupt(digitalPinToPinChangeInterrupt(SERIAL_RX_PIN));
-  if(awakenByInterruptMCP) handleInterrupt();
   if(serial_to_read) read_serial();
+     Serial.flush();
+
+  if(awakenByInterruptMCP) handleInterrupt();
+   Serial.flush();
+
   if(button_to_read) button_pressed();
+   Serial.flush();
+
   if(encoder_to_send) encoder_handler();
+   Serial.flush();
+
   if(enc_switch_global) enc_switch_action();
+   Serial.flush();
+
 //  Serial.println("loop-down");
 }
 
 void button_pressed(){
   if(digitalRead(B1) == LOW){
-    Serial.write(B1P);
+    mySerialWrite(B1P);
   }else if(digitalRead(B2) == LOW){
-    Serial.write(B2P);
+    mySerialWrite(B2P);
   }else if(digitalRead(B3) == LOW){
-    Serial.write(B3P);
+    mySerialWrite(B3P);
   }else if(digitalRead(B4) == LOW){
-    Serial.write(B4P);
+    mySerialWrite(B4P);
   }
   delay(30);
   while(!(digitalRead(B1) && digitalRead(B2) && digitalRead(B3) && digitalRead(B4)));
@@ -414,20 +474,20 @@ void encoder_handler(){
 //  Serial.println();
   switch(e_num){
     case '1':
-      if(e_dir == 'l') Serial.write(E1L);
-      else Serial.write(E1R);
+      if(e_dir == 'l') mySerialWrite(E1L);
+      else mySerialWrite(E1R);
       break;
     case '2':
-      if(e_dir == 'l') Serial.write(E2L);
-      else Serial.write(E2R);
+      if(e_dir == 'l') mySerialWrite(E2L);
+      else mySerialWrite(E2R);
       break;
     case '3':
-      if(e_dir == 'l') Serial.write(E3L);
-      else Serial.write(E3R);
+      if(e_dir == 'l') mySerialWrite(E3L);
+      else mySerialWrite(E3R);
       break;
     case '4':
-      if(e_dir == 'l') Serial.write(E4L);
-      else Serial.write(E4R);
+      if(e_dir == 'l') mySerialWrite(E4L);
+      else mySerialWrite(E4R);
       break;
    
   }
@@ -435,21 +495,21 @@ void encoder_handler(){
 }
 void enc_switch_action(){
   if(enc1_switch_interr){
-    Serial.write(E1S);
+    mySerialWrite(E1S);
     enc1_switch_interr = false;
 
   }
   if(enc2_switch_interr){
-    Serial.write(E2S);
+    mySerialWrite(E2S);
     enc2_switch_interr = false;
   }
   if(enc3_switch_interr){
-    Serial.write(E3S);
+    mySerialWrite(E3S);
     enc3_switch_interr = false;
 
   }
   if(enc4_switch_interr){
-    Serial.write(E4S);
+    mySerialWrite(E4S);
     enc4_switch_interr = false;
   }
   while(!(digitalRead(E1_S) && digitalRead(E2_S) && digitalRead(E3_S) && digitalRead(E4_S))){
