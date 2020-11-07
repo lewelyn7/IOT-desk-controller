@@ -201,6 +201,7 @@ void send_switches_state(){
     if(mcp.digitalRead(swPins[i]) == 0) mySerialWrite(switches[swPins[i]-8]); 
   }
   if(mcp.digitalRead(swPins[7]) == 1) mySerialWrite(switches[swPins[7]-8]); 
+  mySerialWrite(SWITCHES_SYNCHRO_END);
   Serial.flush();
 }
 void setup(){

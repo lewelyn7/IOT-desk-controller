@@ -2,5 +2,5 @@
     "board": "arduino:avr:pro",
     "configuration": "cpu=16MHzatmega328",
     "sketch": "master-computer.ino",
-    "port": "/dev/ttyUSB0"
+    "port": "/dev/ttyUSB1"
 }

@@ -39,11 +39,12 @@
 #define D4N 47
 #define D4F 48
 #define D5N 49
-#define D5F 51
-#define D6N 52
-#define D6F 53
+#define D5F 50
+#define D6N 51
+#define D6F 52
 
 #define ERR_CODE 123
 #define PANEL_READY 124
 #define GET_SWITCHES_STATE 125
 #define SWITCHES_SYNCHRO_BEGIN 126
+#define SWITCHES_SYNCHRO_END 127
