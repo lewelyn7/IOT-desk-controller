@@ -13,7 +13,7 @@
 #define NUM_LEDS 90
 #define DATA_PIN 5
 #define CLOCK_PIN 13
-#define DEBUG 1
+// #define DEBUG 1
 
 #define CLK_SCREEN 6
 #define DATA_SCREEN 7
@@ -68,6 +68,17 @@ int my_max(int i, int max_val)
   if (i > max_val)
   {
     return max_val;
+  }
+  else
+  {
+    return i;
+  }
+}
+int my_min(int i, int min_val)
+{
+  if (i < min_val)
+  {
+    return min_val;
   }
   else
   {
@@ -158,6 +169,7 @@ public:
   bool leds[PANEL_LEDS_NUM];
   bool switches[PANEL_SWITCHES_NUM];
   bool synchronized = false;
+  bool synchronization_mode = false;
   Panel(PanelHandler *handler)
   {
     this->handler = handler;
@@ -168,6 +180,7 @@ public:
   }
   void led_on(uint8_t num)
   {
+    if(synchronization_mode) return;
     if (num >= PANEL_LEDS_NUM)
       return; //ERROR
     leds[num] = true;
@@ -195,6 +208,7 @@ public:
   }
   void led_off(uint8_t num)
   {
+    if(synchronization_mode) return;
     if (num >= PANEL_LEDS_NUM)
       return; //ERROR
     leds[num] = false;
@@ -412,10 +426,12 @@ public:
   }
   void switches_reset()
   {
+    synchronization_mode = true;
     for (int i = 0; i < PANEL_SWITCHES_NUM; i++)
     {
       switch_off(i);
     }
+    synchronization_mode = false;
   }
 };
 Panel *panel;
@@ -477,9 +493,9 @@ public:
       : Animation(frames)
   {
     i = 0;
-    h = 100;
-    s = 100;
-    v = 100;
+    h = 124;
+    s = 200;
+    v = 135;
   }
   void tick()
   {
@@ -745,8 +761,11 @@ public:
   {
     if (stage == LoadingStrip)
     { // TODO start animation in for every tick all leds
-      global_set_hsv((NUM_LEDS / 2 + i) % NUM_LEDS, h, s, v);
-      global_set_hsv(NUM_LEDS / 2 - (i % NUM_LEDS / 2), h, s, v);
+      for(uint8_t j = 0; j <= i; j++){
+        global_set_hsv(my_max(NUM_LEDS / 2 + j, NUM_LEDS-1), h, s, v);
+        global_set_hsv(my_min(NUM_LEDS / 2 - j, 0), h, s, v);
+      }
+
       if (i == NUM_LEDS / 2)
       {
         stage = BlinkDown;
@@ -842,13 +861,13 @@ public:
 };
 AnimationsManager *animManager;
 
+
 class Screen
 {
 public:
-  uint8_t digits[4];
-  uint8_t tmp_digits[4];
-  uint8_t tmp_counter;
-  uint8_t tmp_mode;
+  uint8_t digits[3][4];
+  uint8_t prio_counter[3];
+  uint8_t prio_counter_enable[3];
   uint8_t it;
   bool master_on;
 
@@ -857,110 +876,132 @@ public:
     tm1637.init();
     tm1637.set(BRIGHT_TYPICAL); //BRIGHT_TYPICAL = 2,BRIGHT_DARKEST = 0,BRIGHTEST = 7;
     master_on = false;
-    tmp_mode = false;
-    this->clearAll();
+
+    this->clearAllPrirorities();
+    for (uint8_t i = 0; i < 3; i++)
+    {
+      prio_counter_enable[i] = false;
+    }
     it = 0;
   }
-  void set_digits(uint8_t digits[])
+  void display(uint8_t digits[], uint8_t priority = 0)
   {
+    if (priority >= 3)
+      return; //ERROR
     for (uint8_t i = 0; i < 4; i++)
     {
-      this->digits[i] = digits[i];
+      this->digits[priority][i] = digits[i];
     }
   }
-  void setDigitsUpdate(uint8_t digits[])
+  void displayAndUpdate(uint8_t digits[], uint8_t priority = 0)
   {
-    set_digits(digits);
-    update_screen();
+    display(digits, priority);
+    updateScreen();
   }
-  void clearAll()
+  void clearAllPrirorities()
   {
-    for (uint8_t i = 0; i < 4; i++)
+    for (uint8_t j = 0; j < 3; j++)
     {
-      digits[i] = 0x7f;
+      for (uint8_t i = 0; i < 4; i++)
+      {
+        digits[j][i] = 0x7f;
+      }
     }
   }
-  void update_screen()
+  void updateScreen()
   {
     if (master_on)
     {
-      if (tmp_mode && it == tmp_counter)
+      uint8_t chosen_priority = 0;
+      for (int8_t j = 2; j >= 0; j--) // krecimy sie w nieskonczonosc
       {
-        this->clear_tmp();
+        for (uint8_t i = 0; i < 4; i++)
+        {
+          if (digits[j][i] != 0x7f)
+          {
+            chosen_priority = j;
+            break;
+          }
+        }
+        if(chosen_priority > 0) break;
       }
-    }
-    else
-    {
-      clearAll();
-    }
-    tm1637.display(digits);
+      tm1637.display(digits[chosen_priority]);
 
+
+      for (uint8_t i = 0; i < 3; i++)
+      {
+        if (prio_counter_enable[i])
+        {
+          if (prio_counter[i] == it)
+          {
+            clearOnePriority(i);
+            prio_counter_enable[i] = false;
+          }
+        }
+      }
+    }else{
+      uint8_t clear_tab[] = {0x7f, 0x7f, 0x7f, 0x7f};
+      tm1637.display(clear_tab);
+    }
     it++;
+  }
+  void clearOnePriority(uint8_t prio)
+  {
+    if (prio >= 3)
+      return;
+    for (uint8_t i = 0; i < 4; i++)
+    {
+      digits[prio][i] = 0x7f;
+    }
   }
   void off(void)
   {
     master_on = false;
-    this->update_screen();
+    // this->updateScreen();
   }
   void on(void)
   {
     master_on = true;
-    this->update_screen();
+    // this->updateScreen();
   }
   void toggle(void)
   {
     master_on = master_on ? false : true;
   }
-  void setUpdateForTime(uint8_t digits[], uint8_t time)
+  void displayForTime(uint8_t digits[], uint8_t time, uint8_t priority = 0)
   {
-    if (!tmp_mode)
-    {
-      for (uint8_t i = 0; i < 4; i++)
-      {
-        tmp_digits[i] = this->digits[i];
-      }
-    }
     for (uint8_t i = 0; i < 4; i++)
     {
-      this->digits[i] = digits[i];
+      this->digits[priority][i] = digits[i];
     }
-    tmp_counter = (time + it) % 256;
-    tmp_mode = true;
+    prio_counter[priority] = (time + it) % 256;
+    prio_counter_enable[priority] = true;
     // update_screen();
   }
-  void clear_tmp()
-  {
-    for (uint8_t i = 0; i < 4; i++)
-    {
-      this->digits[i] = this->tmp_digits[i];
-    }
-    tmp_mode = false;
-    // this->update_screen();
-  }
-  void setUpdateForTime(uint16_t num, uint8_t time)
+  void displayForTime(uint16_t num, uint8_t time, uint8_t priority = 0)
   {
     uint8_t digits1[4];
     digits1[0] = (num / 1000) % 10;
     digits1[1] = num / 100;
     digits1[2] = (num / 10) % 10;
     digits1[3] = (num % 10);
-    setUpdateForTime(digits1, time);
+    displayForTime(digits1, time, priority);
   }
-  void displayNum(uint16_t num)
+  void display(uint16_t num, uint8_t priority)
   {
-    digits[0] = (num / 1000) % 10;
-    digits[1] = num / 100;
-    digits[2] = (num / 10) % 10;
-    digits[3] = (num % 10);
+    digits[priority][0] = (num / 1000) % 10;
+    digits[priority][1] = num / 100;
+    digits[priority][2] = (num / 10) % 10;
+    digits[priority][3] = (num % 10);
   }
 
   void displayTemp(float num)
   {
     num *= 10;
-    digits[0] = (int)num / 100;
-    digits[1] = ((int)num / 10) % 10;
-    digits[2] = ((int)num % 10);
-    digits[3] = 'C';
+    digits[0][0] = (int)num / 100;
+    digits[0][1] = ((int)num / 10) % 10;
+    digits[0][2] = ((int)num % 10);
+    digits[0][3] = 'C';
     // point(true);
   }
 };
@@ -983,22 +1024,28 @@ void PanelHandler::s1_toggle()
 }
 void PanelHandler::s2_on()
 {
-  digitalWrite(LAPTOP_FAN, HIGH);
+  
+  screen->on();
+  panel->led_on(1);
 }
 void PanelHandler::s2_off()
 {
-  digitalWrite(LAPTOP_FAN, LOW);
+  screen->off();
+  panel->led_off(1);
+
 }
 void PanelHandler::s2_toggle()
 {
 }
 void PanelHandler::s3_on()
 {
-  screen->on();
+  digitalWrite(LAPTOP_FAN, HIGH);
+
 }
 void PanelHandler::s3_off()
 {
-  screen->off();
+  digitalWrite(LAPTOP_FAN, LOW);
+
 }
 void PanelHandler::s3_toggle()
 {
@@ -1056,13 +1103,13 @@ void PanelHandler::e1_left()
 {
   animManager->get_current()->setH(animManager->get_current()->h - 2);
   uint8_t val = animManager->get_current()->h;
-  screen->setUpdateForTime(val, 40);
+  screen->displayForTime(val, 40, 1);
 }
 void PanelHandler::e1_right()
 {
   animManager->get_current()->setH(animManager->get_current()->h + 2);
   uint8_t val = animManager->get_current()->h;
-  screen->setUpdateForTime(val, 40);
+  screen->displayForTime(val, 40, 1);
 }
 void PanelHandler::e1_btn()
 {
@@ -1080,13 +1127,13 @@ void PanelHandler::e3_left()
 {
   animManager->get_current()->setS(animManager->get_current()->s - 5);
   uint8_t val = animManager->get_current()->s;
-  screen->setUpdateForTime(val, 40);
+  screen->displayForTime(val, 40, 1);
 }
 void PanelHandler::e3_right()
 {
   animManager->get_current()->setS(animManager->get_current()->s + 5);
   uint8_t val = animManager->get_current()->s;
-  screen->setUpdateForTime(val, 40);
+  screen->displayForTime(val, 40, 1);
 }
 void PanelHandler::e3_btn()
 {
@@ -1095,13 +1142,13 @@ void PanelHandler::e4_left()
 {
   animManager->get_current()->setV(animManager->get_current()->v - 5);
   uint8_t val = animManager->get_current()->v;
-  screen->setUpdateForTime(val, 40);
+  screen->displayForTime(val, 40, 1);
 }
 void PanelHandler::e4_right()
 {
   animManager->get_current()->setV(animManager->get_current()->v + 5);
   uint8_t val = animManager->get_current()->v;
-  screen->setUpdateForTime(val, 40);
+  screen->displayForTime(val, 40, 1);
 }
 void PanelHandler::e4_btn()
 {
@@ -1276,16 +1323,20 @@ void panel_serial_task()
     {
       delay(10);
       panel->get_state();
-      panel->synchronized = true;
-      animationThread.enabled = true;
+      
     }
     else if (rcv == SWITCHES_SYNCHRO_BEGIN)
     {
       panel->switches_reset();
+      
     }
     else if (rcv == SWITCHES_SYNCHRO_END)
     {
       panel->send_led_state();
+      panel->synchronized = true;
+      animationThread.enabled = true;
+      dhtThread.enabled = true;
+      screenThread.enabled = true;
     }
   }
   pcSerial1.flush();
@@ -1413,14 +1464,13 @@ void synchronization_task(void)
   else
   {
     panel->get_state();
-    panel->synchronized = true;
-    animationThread.enabled = true;
+
   }
 }
 
 void screen_task(void)
 {
-  screen->update_screen();
+  screen->updateScreen();
 }
 void temp_hum_task(void)
 {
@@ -1480,6 +1530,8 @@ void setup()
   animationThread.onRun(animation_task);
   animationThread.setInterval(20);
   animationThread.enabled = false;
+  dhtThread.enabled = false;
+  screenThread.enabled = false;
   controll.add(&animationThread); // & to pass the pointer to it
   controll.add(&synchronizationThread);
   controll.add(&screenThread);
