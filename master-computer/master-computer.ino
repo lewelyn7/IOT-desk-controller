@@ -510,6 +510,75 @@ public:
   }
 };
 StaticAnimation *static_anim;
+class BlinkingAnimation : public Animation
+{
+public:
+  uint16_t i;
+  uint8_t speed;
+  enum stages
+  {
+    INCREASE_K,
+    DECREASE_K,
+    LOW_K,
+    HIGH_K
+  };
+  stages stage;
+  BlinkingAnimation(uint8_t frames)
+      : Animation(frames)
+  {
+    i = 0;
+    h = 170;
+    s = 200;
+    v = 250;
+    stage = LOW_K;
+    speed = 5;
+  }
+  void tick()
+  {
+    if(stage == LOW_K){
+      for(uint8_t j = 0; j < NUM_LEDS; j++){
+        global_set_hsv(j,h,s,0);
+      }
+    }else if(stage == HIGH_K){
+      for(uint8_t j = 0; j < NUM_LEDS; j++){
+        global_set_hsv(j,h,s,v);
+      }   
+    }else if(stage == INCREASE_K){
+      for(uint8_t j = 0; j < NUM_LEDS; j++){
+        global_set_hsv(j,h,s,my_max(0+i*speed, 255));
+      }      
+    }else if(stage == DECREASE_K){
+      for(uint8_t j = 0; j < NUM_LEDS; j++){
+        global_set_hsv(j,h,s,my_min(v-i*speed, 0));
+      }      
+    }
+    if(stage == INCREASE_K){
+      if(i*speed > 255){
+        stage = HIGH_K;
+        i = 0;
+      }
+    }
+    if(stage == DECREASE_K){
+      if(v - i*speed <= 0){
+        stage = LOW_K;
+        i = 0;
+      }
+    }
+    if(stage == HIGH_K){
+      if(i*speed > 20){
+        stage = DECREASE_K;
+        i = 0;
+      }
+    }
+    if(stage == LOW_K){
+      if(i*speed > 20){
+        stage = INCREASE_K;
+        i = 0;
+      }
+    }    
+    i++;
+  }
+};
 class TravelingDotAnimation : public Animation
 {
 public:
@@ -1004,6 +1073,15 @@ public:
     digits[0][3] = 'C';
     // point(true);
   }
+    void displayHum(float num)
+  {
+    num *= 10;
+    digits[0][0] = (int)num / 100;
+    digits[0][1] = ((int)num / 10) % 10;
+    digits[0][2] = ((int)num % 10);
+    digits[0][3] = 'H';
+    // point(true);
+  }
 };
 Screen *screen;
 uint8_t colorArray[3];
@@ -1039,12 +1117,13 @@ void PanelHandler::s2_toggle()
 }
 void PanelHandler::s3_on()
 {
-  digitalWrite(LAPTOP_FAN, HIGH);
-
+  digitalWrite(LAPTOP_FAN, LOW);
+  panel->led_on(2);
 }
 void PanelHandler::s3_off()
 {
-  digitalWrite(LAPTOP_FAN, LOW);
+  digitalWrite(LAPTOP_FAN, HIGH);
+  panel->led_off(2);
 
 }
 void PanelHandler::s3_toggle()
@@ -1472,18 +1551,35 @@ void screen_task(void)
 {
   screen->updateScreen();
 }
+//TODO
+bool temp = true;
 void temp_hum_task(void)
 {
   sensors_event_t event;
-  dht.temperature().getEvent(&event);
-  if (isnan(event.temperature))
-  {
-    Serial.println(F("Error reading temperature!"));
+  if(temp){
+    dht.temperature().getEvent(&event);
+    if (isnan(event.temperature))
+    {
+      Serial.println(F("Error reading temperature!"));
+    }
+    else
+    {
+      screen->displayTemp(event.temperature);
+    }
+    temp = false;
+  }else{
+     dht.humidity().getEvent(&event);
+    if (isnan(event.relative_humidity))
+    {
+      Serial.println(F("Error reading temperature!"));
+    }
+    else
+    {
+      screen->displayHum(event.relative_humidity);
+    }
+    temp = true;   
   }
-  else
-  {
-    screen->displayTemp(event.temperature);
-  }
+
 }
 void setup()
 {
@@ -1496,6 +1592,7 @@ void setup()
 
   sbuff_next_idx = 0;
   Animation *travelling_dot = new TravelingDotAnimation(60);
+  Animation *blinking_anim = new BlinkingAnimation(60);
   static_anim = new StaticAnimation(60);
   anim = new StartAnimation(60);
   notify_layer = new NotificationLayer(60);
@@ -1505,6 +1602,7 @@ void setup()
   panel = new Panel(phandler);
   animManager->add(static_anim);
   animManager->add(travelling_dot);
+  animManager->add(blinking_anim);
 
   FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS); // GRB ordering is typical
 
