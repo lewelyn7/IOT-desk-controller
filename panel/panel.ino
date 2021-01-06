@@ -4,6 +4,7 @@
 #include <string.h>
 #include "utils.h"
 
+
 // Install the LowPower library for optional sleeping support.
 // See loop() function comments for details on usage.
 //#include <LowPower.h>
@@ -115,8 +116,51 @@ void led_off(int num){
   
 }
 void mySerialWrite(byte msg){
-  while(Serial.available() >0) Serial.read();
   byte rcv;
+  while(Serial.available() >0){ 
+    rcv = Serial.read();
+        switch(rcv){
+      case D1N:
+        led_on(1);
+        break;
+      case D2N:
+        led_on(2);
+        break;
+      case D3N:
+        led_on(3);
+        break;
+      case D4N:
+        led_on(4);
+        break;
+      case D5N:
+        led_on(5);
+        break;
+      case D6N:
+        led_on(6);
+        break;
+      case D1F:
+        led_off(1);
+        break;
+      case D2F:
+        led_off(2);
+        break;
+      case D3F:
+        led_off(3);
+        break;
+      case D4F:
+        led_off(4);
+        break;
+      case D5F:
+        led_off(5);
+        break;
+      case D6F:
+        led_off(6);
+        break;
+      case GET_SWITCHES_STATE:
+        send_switches_state();
+        break;
+       }
+    }
   for(int j = 0; j < 3; j++){
     for(int i =0; i < 15; i++){
       Serial.write(READY_TO_SEND);
@@ -206,7 +250,7 @@ void send_switches_state(){
 }
 void setup(){
 
-  Serial.begin(9600);
+  Serial.begin(57600);
   delay(1000);
 
   

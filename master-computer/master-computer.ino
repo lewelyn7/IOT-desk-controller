@@ -1,7 +1,7 @@
 
+#define FASTLED_ESP8266_RAW_PIN_ORDER
 #include "FastLED.h"
 #include <LinkedList.h>
-#include <SoftwareSerial.h>
 #include "utils.h"
 #include <Thread.h>
 #include <ThreadController.h>
@@ -10,16 +10,21 @@
 #include <DHT.h>
 #include <DHT_U.h>
 
-#define NUM_LEDS 90
-#define DATA_PIN 5
-#define CLOCK_PIN 13
-// #define DEBUG 1
+#include <SoftwareSerial.h>
 
-#define CLK_SCREEN 6
-#define DATA_SCREEN 7
-#define LAPTOP_FAN 9
-#define DHTPIN 8
+#define NUM_LEDS 90
+#define DATA_PIN 5 // todo pins changed only for testing
+// #define CLOCK_PIN 15
+#define DEBUG 1
+
+#define PIEZZO 10
+#define CLK_SCREEN 0
+#define DATA_SCREEN 2
+#define LAPTOP_FAN 15
+#define DHTPIN 13
 #define DHTTYPE DHT11
+#define SERIAL_RX_PIN 12
+#define SERIAL_TX_PIN 14
 
 Thread dhtThread = Thread();
 Thread animationThread = Thread();
@@ -27,7 +32,7 @@ Thread synchronizationThread = Thread();
 Thread screenThread = Thread();
 //Thread serial_task = Thread();
 //Thread panel_serial_task = Thread();
-SoftwareSerial pcSerial1(11, 10); // rx, tx
+  SoftwareSerial pcSerial1; // rx, tx
 ThreadController controll = ThreadController();
 TM1637 tm1637(CLK_SCREEN, DATA_SCREEN);
 DHT_Unified dht(DHTPIN, DHTTYPE);
@@ -934,7 +939,7 @@ AnimationsManager *animManager;
 class Screen
 {
 public:
-  uint8_t digits[3][4];
+  int8_t digits[3][4];
   uint8_t prio_counter[3];
   uint8_t prio_counter_enable[3];
   uint8_t it;
@@ -1009,7 +1014,7 @@ public:
         }
       }
     }else{
-      uint8_t clear_tab[] = {0x7f, 0x7f, 0x7f, 0x7f};
+      int8_t clear_tab[] = {0x7f, 0x7f, 0x7f, 0x7f};
       tm1637.display(clear_tab);
     }
     it++;
@@ -1267,7 +1272,13 @@ void panel_serial_task()
 
   while (pcSerial1.available() > 0)
   {
+
     byte rcv = pcSerial1.read();
+    #if DEBUG
+    Serial.println("panel available");
+    Serial.print(rcv);
+    Serial.println("");
+    #endif
     if (rcv == READY_TO_SEND)
     {
       clear_pc_serial();
@@ -1279,7 +1290,8 @@ void panel_serial_task()
       return;
     }
     byte interrcnt = 0;
-    while (rcv != PRECOMMAND)
+    bool precommand_ack = false;
+    while (rcv == PRECOMMAND || !precommand_ack)
     {
       if (interrcnt == 16)
       {
@@ -1289,12 +1301,16 @@ void panel_serial_task()
       if (pcSerial1.available() > 0)
       {
         rcv = pcSerial1.read();
+            Serial.print(rcv); //TODO
+            Serial.print('\n');
+        if(rcv == PRECOMMAND){
+          precommand_ack = true;
+        }
       }
       delay(1);
       interrcnt++;
     }
 
-    rcv = pcSerial1.read();
 #if DEBUG
     Serial.println("panel");
     Serial.print(rcv);
@@ -1538,6 +1554,8 @@ void synchronization_task(void)
 {
   if (panel->synchronized)
   {
+    //TODO 
+    Serial.println("PANEL_SYNCHRO");
     synchronizationThread.enabled = false;
   }
   else
@@ -1583,8 +1601,11 @@ void temp_hum_task(void)
 }
 void setup()
 {
-  pinMode(4, INPUT);
-  pinMode(3, OUTPUT);
+
+
+
+  // pinMode(4, INPUT);
+  // pinMode(3, OUTPUT);
   pinMode(LAPTOP_FAN, OUTPUT);
 
   screen = new Screen();
@@ -1615,7 +1636,7 @@ void setup()
   FastLED.show();
   Serial.begin(115200);
   Serial.println("master");
-  pcSerial1.begin(9600);
+  pcSerial1.begin(57600, SWSERIAL_8N1, SERIAL_RX_PIN, SERIAL_TX_PIN, false, 64, 64);
   // sanity check delay - allows reprogramming if accidently blowing power w/leds
   delay(300);
 
@@ -1634,6 +1655,9 @@ void setup()
   controll.add(&synchronizationThread);
   controll.add(&screenThread);
   controll.add(&dhtThread);
+  #ifdef DEBUG
+  Serial.println("setup done\r\n");
+  #endif
 }
 void loop()
 {
