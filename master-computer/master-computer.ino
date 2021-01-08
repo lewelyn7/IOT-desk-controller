@@ -1122,12 +1122,12 @@ void PanelHandler::s2_toggle()
 }
 void PanelHandler::s3_on()
 {
-  digitalWrite(LAPTOP_FAN, LOW);
+  digitalWrite(LAPTOP_FAN, HIGH);
   panel->led_on(2);
 }
 void PanelHandler::s3_off()
 {
-  digitalWrite(LAPTOP_FAN, HIGH);
+  digitalWrite(LAPTOP_FAN, LOW);
   panel->led_off(2);
 
 }
