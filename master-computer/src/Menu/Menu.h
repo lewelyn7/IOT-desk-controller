@@ -1,5 +1,3 @@
-#ifndef __MENU_H__
-#define __MENU_H__
 
 
 enum class MenuStates
@@ -12,6 +10,9 @@ enum class SerialStates
   Ready,
   ColorReadingHSV
 };
+#ifndef __MENU_H__
+#define __MENU_H__
+
 class Menu
 {
 public:
@@ -21,4 +22,6 @@ public:
   void setState(MenuStates mstate);
   void setSerial(SerialStates serial);
 };
+
+
 #endif // __MENU_H__

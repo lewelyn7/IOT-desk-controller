@@ -1,7 +1,7 @@
-#pragma once
+// #pragma once
 
-// #ifndef __ANIMATION_H__
-// #define __ANIMATION_H__
+#ifndef __ANIMATION_H__
+#define __ANIMATION_H__
 
 #include <LinkedList.h>
 #include <HardwareSerial.h>
@@ -9,10 +9,15 @@
 #include "../LedWrapper/LedWrapper.h"
 #include <Arduino.h>
 
-#include <FastLED.h>
 
-
-
+// class Animation;
+// class StaticAnimation;
+// class BlinkingAnimation;
+// class  TravelingDotAnimation;
+// class StartAnimation;
+// class NotificationLayer;
+// class MasterLayer;
+// class AnimationsManager;
 
 class Animation
 {
@@ -23,13 +28,13 @@ public:
   uint8_t v;
   CRGB *leds;
   Animation(CRGB *leds, uint8_t frames_per_sec);;
-  virtual void tick();;
-  virtual bool done();;
-  virtual void setH(uint8_t val);;
-  virtual void setS(uint8_t val);;
-  virtual void setV(uint8_t val);;
-  void setHSV(uint8_t h1, uint8_t s1, uint8_t v1);;
-  void clear_all();;
+  virtual void tick();
+  virtual bool done();
+  virtual void setH(uint8_t val);
+  virtual void setS(uint8_t val);
+  virtual void setV(uint8_t val);
+  void setHSV(uint8_t h1, uint8_t s1, uint8_t v1);
+  void clear_all();
 };
 class StaticAnimation : public Animation
 {
@@ -120,6 +125,8 @@ public:
   void blink_off();
   void blink_toggle();
 };
+
+
 class StartAnimation : public Animation
 {
 private:
@@ -172,4 +179,4 @@ public:
 
 
 
-// #endif // __ANIMATION_H__
+#endif // __ANIMATION_H__

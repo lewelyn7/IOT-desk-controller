@@ -1,3 +1,6 @@
+#ifndef __LEDWRAPPER_H__
+#define __LEDWRAPPER_H__
+
 #include "LedWrapper.h"
 void global_set_hsv(CRGB *leds, uint8_t i, uint8_t h, uint8_t s, uint8_t v)
 {
@@ -29,3 +32,4 @@ void global_set_rgb(CRGB *leds, uint8_t i, CRGB color)
     leds[i].setRGB(color.r, color.g, color.b);
   }
 }
+#endif // __LEDWRAPPER_H__

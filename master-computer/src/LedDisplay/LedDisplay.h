@@ -1,10 +1,10 @@
-#ifndef __LEDDISPLAY_H__
-#define __LEDDISPLAY_H__
 
 #include <Arduino.h>
 #include <TM1637.h>
 #define CLK_SCREEN 0
 #define DATA_SCREEN 2
+#ifndef __LEDDISPLAY_H__
+#define __LEDDISPLAY_H__
 
 class Screen
 {
@@ -13,6 +13,7 @@ public:
   uint8_t prio_counter[3];
   uint8_t prio_counter_enable[3];
   uint8_t it;
+  TM1637 tm1637;
   bool master_on;
 
   Screen();
@@ -30,4 +31,8 @@ public:
   void displayTemp(float num);
   void displayHum(float num);
 };
+
+
+
+
 #endif // __LEDDISPLAY_H__
