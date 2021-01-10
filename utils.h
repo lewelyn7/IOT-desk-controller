@@ -1,3 +1,4 @@
+#pragma once
 #define READY_TO_SEND 90
 #define READY_TO_RECEIVE 91
 #define PRECOMMAND 92

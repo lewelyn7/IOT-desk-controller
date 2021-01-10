@@ -1,30 +1,13 @@
 
-#define FASTLED_ESP8266_RAW_PIN_ORDER
-#include "FastLED.h"
 #include <LinkedList.h>
 #include "utils.h"
 #include <Thread.h>
 #include <ThreadController.h>
-#include "TM1637.h"
-#include <Adafruit_Sensor.h>
-#include <DHT.h>
-#include <DHT_U.h>
-
+#include <FastLED.h>
 #include <SoftwareSerial.h>
+#include "globals.h"
+#include "Animation/animation.h"
 
-#define NUM_LEDS 90
-#define DATA_PIN 5 // todo pins changed only for testing
-// #define CLOCK_PIN 15
-#define DEBUG 1
-
-#define PIEZZO 10
-#define CLK_SCREEN 0
-#define DATA_SCREEN 2
-#define LAPTOP_FAN 15
-#define DHTPIN 13
-#define DHTTYPE DHT11
-#define SERIAL_RX_PIN 12
-#define SERIAL_TX_PIN 14
 
 Thread dhtThread = Thread();
 Thread animationThread = Thread();
@@ -32,97 +15,16 @@ Thread synchronizationThread = Thread();
 Thread screenThread = Thread();
 //Thread serial_task = Thread();
 //Thread panel_serial_task = Thread();
-  SoftwareSerial pcSerial1; // rx, tx
 ThreadController controll = ThreadController();
-TM1637 tm1637(CLK_SCREEN, DATA_SCREEN);
 DHT_Unified dht(DHTPIN, DHTTYPE);
 
-CRGB leds[NUM_LEDS];
-void global_set_hsv(uint8_t i, uint8_t h, uint8_t s, uint8_t v)
-{
-  if (i >= NUM_LEDS)
-  {
-    return;
-  }
-  if (i < 59)
-  {
-    leds[i].setHSV((h + 6) % 256, s % 256, v % 256);
-  }
-  else
-  {
-    leds[i].setHSV(h % 256, s % 256, v % 256);
-  }
-}
-void global_set_rgb(uint8_t i, CRGB color)
-{
-  if (i >= NUM_LEDS)
-  {
-    return;
-  }
-  if (i < 59)
-  {
-    leds[i].setRGB(color.r, color.g, color.b);
-  }
-  else
-  {
-    leds[i].setRGB(color.r, color.g, color.b);
-  }
-}
-int my_max(int i, int max_val)
-{
-  if (i > max_val)
-  {
-    return max_val;
-  }
-  else
-  {
-    return i;
-  }
-}
-int my_min(int i, int min_val)
-{
-  if (i < min_val)
-  {
-    return min_val;
-  }
-  else
-  {
-    return i;
-  }
-}
-enum class MenuStates
-{
-  Starting,
-  Started,
-};
-enum class SerialStates
-{
-  Ready,
-  ColorReadingHSV
-};
-class Menu
-{
-public:
-  MenuStates state;
-  SerialStates serial_state;
-  Menu()
-  {
-    state = MenuStates::Starting;
-    serial_state = SerialStates::Ready;
-  }
-  void setState(MenuStates mstate)
-  {
-    state = mstate;
-  }
-  void setSerial(SerialStates serial)
-  {
-    serial_state = serial;
-  }
-};
-Menu MENU = Menu();
+
 
 #define PANEL_LEDS_NUM 6
 #define PANEL_SWITCHES_NUM 8
+
+Menu MENU = Menu();
+
 class PanelHandler
 {
 public:
@@ -167,6 +69,43 @@ public:
   virtual void btn3();
   virtual void btn4();
 };
+// class Panel
+// {
+// public:
+//   PanelHandler *handler;
+//   bool leds[PANEL_LEDS_NUM];
+//   bool switches[PANEL_SWITCHES_NUM];
+//   bool synchronized = false;
+//   bool synchronization_mode = false;
+//   Panel(PanelHandler *handler);
+
+//   void led_on(uint8_t num);
+
+//   void led_off(uint8_t num);
+
+//   void led_toggle(uint8_t num);
+
+//   void switch_on(uint8_t num);
+
+//   void switch_off(uint8_t num);
+
+//   void switch_toggle(uint8_t num);
+
+//   void enc_left(uint8_t num);
+
+//   void enc_right(uint8_t num);
+
+//   void enc_btn(uint8_t num);
+
+//   void btn(uint8_t num);
+
+//   void send_led_state();
+
+//   void get_state();
+
+//   void switches_reset();
+
+// };
 class Panel
 {
 public:
@@ -439,667 +378,16 @@ public:
     synchronization_mode = false;
   }
 };
-Panel *panel;
-
-class Animation
-{
-public:
-  uint8_t fps;
-  uint8_t h;
-  uint8_t s;
-  uint8_t v;
-  Animation(uint8_t frames_per_sec)
-  {
-    fps = frames_per_sec;
-    h = 100;
-    s = 100;
-    v = 100;
-  }
-  virtual void tick()
-  {
-  }
-  virtual bool done()
-  {
-    return false;
-  }
-  virtual void setH(uint8_t val)
-  {
-    h = val;
-  }
-  virtual void setS(uint8_t val)
-  {
-    s = val;
-  }
-  virtual void setV(uint8_t val)
-  {
-    v = val;
-  }
-  void setHSV(uint8_t h1, uint8_t s1, uint8_t v1)
-  {
-    h = h1;
-    s = s1;
-    v = v1;
-  }
-  void clear_all()
-  {
-    for (uint8_t i = 0; i < NUM_LEDS; i++)
-    {
-      global_set_hsv(i, 0, 0, 0);
-    }
-  }
-};
-Animation *anim;
-class StaticAnimation : public Animation
-{
-public:
-  uint16_t i;
-
-  StaticAnimation(uint8_t frames)
-      : Animation(frames)
-  {
-    i = 0;
-    h = 124;
-    s = 200;
-    v = 135;
-  }
-  void tick()
-  {
-    updateAll();
-  }
-  void updateAll(void)
-  {
-    for (uint8_t j = 0; j < NUM_LEDS; j++)
-    {
-      global_set_hsv(j, h, s, v);
-    }
-  }
-};
-StaticAnimation *static_anim;
-class BlinkingAnimation : public Animation
-{
-public:
-  uint16_t i;
-  uint8_t speed;
-  enum stages
-  {
-    INCREASE_K,
-    DECREASE_K,
-    LOW_K,
-    HIGH_K
-  };
-  stages stage;
-  BlinkingAnimation(uint8_t frames)
-      : Animation(frames)
-  {
-    i = 0;
-    h = 170;
-    s = 200;
-    v = 250;
-    stage = LOW_K;
-    speed = 5;
-  }
-  void tick()
-  {
-    if(stage == LOW_K){
-      for(uint8_t j = 0; j < NUM_LEDS; j++){
-        global_set_hsv(j,h,s,0);
-      }
-    }else if(stage == HIGH_K){
-      for(uint8_t j = 0; j < NUM_LEDS; j++){
-        global_set_hsv(j,h,s,v);
-      }   
-    }else if(stage == INCREASE_K){
-      for(uint8_t j = 0; j < NUM_LEDS; j++){
-        global_set_hsv(j,h,s,my_max(0+i*speed, 255));
-      }      
-    }else if(stage == DECREASE_K){
-      for(uint8_t j = 0; j < NUM_LEDS; j++){
-        global_set_hsv(j,h,s,my_min(v-i*speed, 0));
-      }      
-    }
-    if(stage == INCREASE_K){
-      if(i*speed > 255){
-        stage = HIGH_K;
-        i = 0;
-      }
-    }
-    if(stage == DECREASE_K){
-      if(v - i*speed <= 0){
-        stage = LOW_K;
-        i = 0;
-      }
-    }
-    if(stage == HIGH_K){
-      if(i*speed > 20){
-        stage = DECREASE_K;
-        i = 0;
-      }
-    }
-    if(stage == LOW_K){
-      if(i*speed > 20){
-        stage = INCREASE_K;
-        i = 0;
-      }
-    }    
-    i++;
-  }
-};
-class TravelingDotAnimation : public Animation
-{
-public:
-  uint16_t i;
-  enum stages
-  {
-    START,
-    FORWARD,
-    REVERSE
-  };
-  stages stage;
-  TravelingDotAnimation(uint8_t frames)
-      : Animation(frames)
-  {
-    i = 0;
-    h = 100;
-    s = 200;
-    v = 100;
-    stage = START;
-  }
-  void tick()
-  {
-    clear_all();
-    uint8_t id;
-    if (stage == START)
-    {
-    }
-    if (stage == FORWARD)
-    {
-      for (int j = 0; j <= 20; j++)
-      {
-        id = i + j - 20;
-        if (id < NUM_LEDS && id >= 0)
-          ;
-        global_set_hsv(id, h, s, my_max(j * 13, 255));
-      }
-    }
-    else if (stage == REVERSE)
-    {
-      for (int j = 0; j <= 20; j++)
-      {
-        id = NUM_LEDS + 20 - j - i;
-        if (id < NUM_LEDS && id >= 0)
-          ;
-        global_set_hsv(id, h, s, my_max(j * 13, 255));
-      }
-    }
-    i++;
-    if (i == NUM_LEDS - 1)
-    {
-      stage = stage == REVERSE ? FORWARD : REVERSE;
-      i = 0;
-    }
-  }
-};
-class MasterLayer : public Animation
-{
-public:
-  uint16_t i;
-  bool master_switch;
-
-  bool muted = true;
-  enum states
-  {
-    OFFing,
-    OFF,
-    ONing,
-    ON
-  };
-  states state;
-  MasterLayer(uint8_t frames)
-      : Animation(frames)
-  {
-    i = 0;
-    master_switch = false;
-    state = OFF;
-  }
-  void tick()
-  {
-    if (state == ONing)
-    {
-      for (uint8_t j = 0; j < NUM_LEDS; j++)
-      {
-        global_set_rgb(j, blend(CRGB(0, 0, 0), leds[j], my_max(i * 10, 255)));
-        if (i * 10 > 255)
-          state = ON;
-      }
-    }
-    else if (state == OFFing)
-    {
-      for (uint8_t j = 0; j < i; j++)
-      {
-        global_set_hsv(NUM_LEDS - j, 0, 0, 0);
-        global_set_hsv(j, 0, 0, 0);
-        if (i == NUM_LEDS / 2 + 1)
-          state = OFF;
-      }
-    }
-    if (state == OFF)
-    {
-      for (uint8_t j = 0; j < NUM_LEDS; j++)
-      {
-        global_set_hsv(j, 0, 0, 0);
-      }
-    }
-    // if(!master_switch){
-    // for(uint8_t j = 0; j < NUM_LEDS; j++){
-    //   CHSV hsv = leds[i]
-    //   global_set_hsv(i, 0, 0, 0);
-    // }
-    // }
-    i++;
-  }
-  void Off(void)
-  {
-    master_switch = false;
-    state = OFFing;
-    i = 0;
-  }
-  void On(void)
-  {
-    master_switch = true;
-    state = ONing;
-    i = 0;
-  }
-  void Toggle(void)
-  {
-    if (master_switch)
-      this->Off();
-    else
-      this->On();
-  }
-};
-MasterLayer *master_layer;
-class NotificationLayer : public Animation
-{
-public:
-  uint16_t i;
-  bool on_switch;
-  bool blinker;
-
-  bool muted = true;
-  NotificationLayer(uint8_t frames)
-      : Animation(frames)
-  {
-    i = 0;
-    on_switch = false;
-    blinker = false;
-  }
-  void tick()
-  {
-    if (on_switch)
-    {
-      if (!muted)
-      {
-        for (uint8_t j = 33; j < 42; j++)
-        {
-          global_set_hsv(j, 10, 230, 250);
-        }
-      }
-      if (blinker)
-      {
-        blink(i, CRGB(50, 250, 10), 5, 65, 75);
-      }
-    }
-
-    i++;
-  }
-  void mute()
-  {
-    muted = true;
-  }
-  void unmute()
-  {
-    muted = false;
-  }
-  void mute_toggle()
-  {
-    muted = muted ? false : true;
-  }
-  void on()
-  {
-    on_switch = true;
-  }
-  void off()
-  {
-    on_switch = false;
-  }
-  void toggle()
-  {
-    on_switch = on_switch ? false : true;
-  }
-  void blink(uint16_t i, CRGB color, uint8_t speed, uint8_t start, uint8_t stop)
-  {
-    uint16_t threshold = ((i)*speed) % 512;
-    if (threshold >= 256)
-    {
-      threshold = 511 - threshold;
-    }
-    Serial.print(threshold);
-    Serial.println("");
-    for (int j = start; j <= stop; j++)
-    {
-      global_set_rgb(j, blend(color, leds[j], threshold));
-    }
-  }
-  void blink_on()
-  {
-    blinker = true;
-  }
-  void blink_off()
-  {
-    blinker = false;
-  }
-  void blink_toggle()
-  {
-    blinker = blinker ? false : true;
-  }
-};
-NotificationLayer *notify_layer;
-class StartAnimation : public Animation
-{
-private:
-  bool done_status;
-
-public:
-  uint16_t i;
-  uint8_t blink_counter;
-  enum stages
-  {
-    LoadingStrip,
-    BlinkDown,
-    BlinkUp,
-    Ready
-  };
-  stages stage;
-  StartAnimation(uint8_t frames)
-      : Animation(frames)
-  {
-    h = 96;
-    s = 200;
-    v = 250;
-    stage = LoadingStrip;
-    i = 0;
-    done_status = false;
-    blink_counter = 0;
-  }
-  void tick()
-  {
-    if (stage == LoadingStrip)
-    { // TODO start animation in for every tick all leds
-      for(uint8_t j = 0; j <= i; j++){
-        global_set_hsv(my_max(NUM_LEDS / 2 + j, NUM_LEDS-1), h, s, v);
-        global_set_hsv(my_min(NUM_LEDS / 2 - j, 0), h, s, v);
-      }
-
-      if (i == NUM_LEDS / 2)
-      {
-        stage = BlinkDown;
-        i = 0;
-      }
-    }
-    else if (stage == BlinkDown || stage == BlinkUp)
-    {
-      if (stage == BlinkDown)
-      {
-        for (uint8_t j = 0; j < NUM_LEDS; j++)
-          global_set_hsv(j, h, s, v - 10 * (i % v));
-      }
-      else
-      {
-        for (uint8_t j = 0; j < NUM_LEDS; j++)
-          global_set_hsv(j, h, s, 0 + 10 * (i % v));
-      }
-      if (blink_counter > 2)
-      {
-        done_status = true;
-      }
-      if (stage == BlinkDown && 25 == (i % v))
-      {
-        stage = BlinkUp;
-        blink_counter++;
-        i = 0;
-      }
-      else if (stage == BlinkUp && i % v == 25)
-      {
-        stage = BlinkDown;
-        blink_counter++;
-        i = 0;
-      }
-    }
-
-    i++;
-  }
-  bool done()
-  {
-    return done_status;
-  }
-};
-class AnimationsManager
-{
-private:
-  Animation *curr;
-  Animation *notification;
-  Animation *master_layer;
-  int curr_index = 0;
-
-public:
-  LinkedList<Animation *> *anim_list;
-  AnimationsManager(Animation *anim, Animation *noti, Animation *mast)
-  {
-    anim_list = new LinkedList<Animation *>();
-    anim_list->add(anim);
-    curr = anim;
-    notification = noti;
-    master_layer = mast;
-  }
-  void add(Animation *anim)
-  {
-    anim_list->add(anim);
-  }
-
-  void tick()
-  {
-    curr->tick();
-    if (curr->done())
-    {
-      //      pcSerial1.println("next");
-      next();
-    }
-    notification->tick();
-    master_layer->tick();
-    FastLED.show();
-  }
-  void next()
-  {
-    curr_index = (curr_index + 1) % anim_list->size();
-    curr = anim_list->get(curr_index);
-  }
-  void previous()
-  {
-    curr_index = (curr_index) == 0 ? anim_list->size() - 1 : curr_index - 1;
-    curr = anim_list->get(curr_index);
-  }
-  Animation *get_current(void)
-  {
-    return curr;
-  }
-};
-AnimationsManager *animManager;
-
-
-class Screen
-{
-public:
-  int8_t digits[3][4];
-  uint8_t prio_counter[3];
-  uint8_t prio_counter_enable[3];
-  uint8_t it;
-  bool master_on;
-
-  Screen()
-  {
-    tm1637.init();
-    tm1637.set(BRIGHT_TYPICAL); //BRIGHT_TYPICAL = 2,BRIGHT_DARKEST = 0,BRIGHTEST = 7;
-    master_on = false;
-
-    this->clearAllPrirorities();
-    for (uint8_t i = 0; i < 3; i++)
-    {
-      prio_counter_enable[i] = false;
-    }
-    it = 0;
-  }
-  void display(uint8_t digits[], uint8_t priority = 0)
-  {
-    if (priority >= 3)
-      return; //ERROR
-    for (uint8_t i = 0; i < 4; i++)
-    {
-      this->digits[priority][i] = digits[i];
-    }
-  }
-  void displayAndUpdate(uint8_t digits[], uint8_t priority = 0)
-  {
-    display(digits, priority);
-    updateScreen();
-  }
-  void clearAllPrirorities()
-  {
-    for (uint8_t j = 0; j < 3; j++)
-    {
-      for (uint8_t i = 0; i < 4; i++)
-      {
-        digits[j][i] = 0x7f;
-      }
-    }
-  }
-  void updateScreen()
-  {
-    if (master_on)
-    {
-      uint8_t chosen_priority = 0;
-      for (int8_t j = 2; j >= 0; j--) // krecimy sie w nieskonczonosc
-      {
-        for (uint8_t i = 0; i < 4; i++)
-        {
-          if (digits[j][i] != 0x7f)
-          {
-            chosen_priority = j;
-            break;
-          }
-        }
-        if(chosen_priority > 0) break;
-      }
-      tm1637.display(digits[chosen_priority]);
-
-
-      for (uint8_t i = 0; i < 3; i++)
-      {
-        if (prio_counter_enable[i])
-        {
-          if (prio_counter[i] == it)
-          {
-            clearOnePriority(i);
-            prio_counter_enable[i] = false;
-          }
-        }
-      }
-    }else{
-      int8_t clear_tab[] = {0x7f, 0x7f, 0x7f, 0x7f};
-      tm1637.display(clear_tab);
-    }
-    it++;
-  }
-  void clearOnePriority(uint8_t prio)
-  {
-    if (prio >= 3)
-      return;
-    for (uint8_t i = 0; i < 4; i++)
-    {
-      digits[prio][i] = 0x7f;
-    }
-  }
-  void off(void)
-  {
-    master_on = false;
-    // this->updateScreen();
-  }
-  void on(void)
-  {
-    master_on = true;
-    // this->updateScreen();
-  }
-  void toggle(void)
-  {
-    master_on = master_on ? false : true;
-  }
-  void displayForTime(uint8_t digits[], uint8_t time, uint8_t priority = 0)
-  {
-    for (uint8_t i = 0; i < 4; i++)
-    {
-      this->digits[priority][i] = digits[i];
-    }
-    prio_counter[priority] = (time + it) % 256;
-    prio_counter_enable[priority] = true;
-    // update_screen();
-  }
-  void displayForTime(uint16_t num, uint8_t time, uint8_t priority = 0)
-  {
-    uint8_t digits1[4];
-    digits1[0] = (num / 1000) % 10;
-    digits1[1] = num / 100;
-    digits1[2] = (num / 10) % 10;
-    digits1[3] = (num % 10);
-    displayForTime(digits1, time, priority);
-  }
-  void display(uint16_t num, uint8_t priority)
-  {
-    digits[priority][0] = (num / 1000) % 10;
-    digits[priority][1] = num / 100;
-    digits[priority][2] = (num / 10) % 10;
-    digits[priority][3] = (num % 10);
-  }
-
-  void displayTemp(float num)
-  {
-    num *= 10;
-    digits[0][0] = (int)num / 100;
-    digits[0][1] = ((int)num / 10) % 10;
-    digits[0][2] = ((int)num % 10);
-    digits[0][3] = 'C';
-    // point(true);
-  }
-    void displayHum(float num)
-  {
-    num *= 10;
-    digits[0][0] = (int)num / 100;
-    digits[0][1] = ((int)num / 10) % 10;
-    digits[0][2] = ((int)num % 10);
-    digits[0][3] = 'H';
-    // point(true);
-  }
-};
-Screen *screen;
-uint8_t colorArray[3];
-//class serial buffer jest potrzebne
+extern Panel *panel;
 
 void PanelHandler::s1_on()
 {
-  master_layer->On();
+  animationManager->master_layer->On();
   panel->led_on(0);
 }
 void PanelHandler::s1_off()
 {
-  master_layer->Off();
+  animationManager->master_layer->Off();
   panel->led_off(0);
 }
 void PanelHandler::s1_toggle()
@@ -1163,12 +451,12 @@ void PanelHandler::s6_toggle()
 }
 void PanelHandler::s7_on()
 {
-  notify_layer->on();
+  animationManager->notify_layer->on();
   panel->led_on(5);
 }
 void PanelHandler::s7_off()
 {
-  notify_layer->off();
+  animationManager->notify_layer->off();
   panel->led_off(5);
 }
 void PanelHandler::s7_toggle()
@@ -1185,14 +473,14 @@ void PanelHandler::s8_toggle()
 }
 void PanelHandler::e1_left()
 {
-  animManager->get_current()->setH(animManager->get_current()->h - 2);
-  uint8_t val = animManager->get_current()->h;
+  animationManager->get_current()->setH(animationManager->get_current()->h - 2);
+  uint8_t val = animationManager->get_current()->h;
   screen->displayForTime(val, 40, 1);
 }
 void PanelHandler::e1_right()
 {
-  animManager->get_current()->setH(animManager->get_current()->h + 2);
-  uint8_t val = animManager->get_current()->h;
+  animationManager->get_current()->setH(animationManager->get_current()->h + 2);
+  uint8_t val = animationManager->get_current()->h;
   screen->displayForTime(val, 40, 1);
 }
 void PanelHandler::e1_btn()
@@ -1209,14 +497,14 @@ void PanelHandler::e2_btn()
 }
 void PanelHandler::e3_left()
 {
-  animManager->get_current()->setS(animManager->get_current()->s - 5);
-  uint8_t val = animManager->get_current()->s;
+  animationManager->get_current()->setS(animationManager->get_current()->s - 5);
+  uint8_t val = animationManager->get_current()->s;
   screen->displayForTime(val, 40, 1);
 }
 void PanelHandler::e3_right()
 {
-  animManager->get_current()->setS(animManager->get_current()->s + 5);
-  uint8_t val = animManager->get_current()->s;
+  animationManager->get_current()->setS(animationManager->get_current()->s + 5);
+  uint8_t val = animationManager->get_current()->s;
   screen->displayForTime(val, 40, 1);
 }
 void PanelHandler::e3_btn()
@@ -1224,14 +512,14 @@ void PanelHandler::e3_btn()
 }
 void PanelHandler::e4_left()
 {
-  animManager->get_current()->setV(animManager->get_current()->v - 5);
-  uint8_t val = animManager->get_current()->v;
+  animationManager->get_current()->setV(animationManager->get_current()->v - 5);
+  uint8_t val = animationManager->get_current()->v;
   screen->displayForTime(val, 40, 1);
 }
 void PanelHandler::e4_right()
 {
-  animManager->get_current()->setV(animManager->get_current()->v + 5);
-  uint8_t val = animManager->get_current()->v;
+  animationManager->get_current()->setV(animationManager->get_current()->v + 5);
+  uint8_t val = animationManager->get_current()->v;
   screen->displayForTime(val, 40, 1);
 }
 void PanelHandler::e4_btn()
@@ -1239,20 +527,27 @@ void PanelHandler::e4_btn()
 }
 void PanelHandler::btn1()
 {
-  notify_layer->mute_toggle();
+  animationManager->notify_layer->mute_toggle();
 }
 void PanelHandler::btn2()
 {
-  notify_layer->blink_toggle();
+  animationManager->notify_layer->blink_toggle();
 }
 void PanelHandler::btn3()
 {
-  animManager->previous();
+  animationManager->previous();
 }
 void PanelHandler::btn4()
 {
-  animManager->next();
+  animationManager->next();
 }
+
+
+
+
+extern PanelHandler *phandler;
+uint8_t colorArray[3];
+//class serial buffer jest potrzebne
 
 inline void clear_serial(void)
 {
@@ -1264,6 +559,7 @@ inline void clear_pc_serial(void)
   while (pcSerial1.available() > 0)
     pcSerial1.read();
 }
+
 char pserial_buffer[20];
 uint8_t psbuff_next_idx = 0;
 bool pserial_msg_ready = false;
@@ -1479,30 +775,30 @@ void serial_task(void)
         Serial.print(colorArray[1]);
         Serial.print(colorArray[2]);
 
-        static_anim->setHSV(colorArray[0], colorArray[1], colorArray[2]);
+        animationManager->static_anim->setHSV(colorArray[0], colorArray[1], colorArray[2]);
       }
       else if (serial_buffer[0] == 'm')
       {
-        notify_layer->mute();
+        animationManager->notify_layer->mute();
       }
       else if (serial_buffer[0] == 'u')
       {
-        notify_layer->unmute();
+        animationManager->notify_layer->unmute();
       }
       else if (serial_buffer[0] == 'S')
       {
         if (serial_buffer[1] == '1' && serial_buffer[2] == 'u')
         {
 
-          if (static_anim->v == 0)
+          if (animationManager->static_anim->v == 0)
           {
             pcSerial1.write(D1N);
-            static_anim->v = 200;
+            animationManager->static_anim->v = 200;
           }
           else
           {
             pcSerial1.write(D1F);
-            static_anim->v = 0;
+            animationManager->static_anim->v = 0;
           }
         }
       }
@@ -1510,33 +806,33 @@ void serial_task(void)
       {
         if (serial_buffer[2] == 'r')
         {
-          static_anim->h += 2;
+          animationManager->static_anim->h += 2;
         }
         else if (serial_buffer[2] == 'l')
         {
-          static_anim->h -= 2;
+          animationManager->static_anim->h -= 2;
         }
       }
       else if (serial_buffer[0] == 'e' && serial_buffer[1] == '3')
       {
         if (serial_buffer[2] == 'r')
         {
-          static_anim->s += 5;
+          animationManager->static_anim->s += 5;
         }
         else if (serial_buffer[2] == 'l')
         {
-          static_anim->s -= 5;
+          animationManager->static_anim->s -= 5;
         }
       }
       else if (serial_buffer[0] == 'e' && serial_buffer[1] == '4')
       {
         if (serial_buffer[2] == 'r')
         {
-          static_anim->v += 5;
+          animationManager->static_anim->v += 5;
         }
         else if (serial_buffer[2] == 'l')
         {
-          static_anim->v -= 5;
+          animationManager->static_anim->v -= 5;
         }
       }
     }
@@ -1547,11 +843,11 @@ void serial_task(void)
 
 void animation_task(void)
 {
-  animManager->tick();
+  animationManager->tick();
 }
 
 void synchronization_task(void)
-{
+  {
   if (panel->synchronized)
   {
     //TODO 
@@ -1569,6 +865,8 @@ void screen_task(void)
 {
   screen->updateScreen();
 }
+
+
 //TODO
 bool temp = true;
 void temp_hum_task(void)
@@ -1608,31 +906,21 @@ void setup()
   // pinMode(3, OUTPUT);
   pinMode(LAPTOP_FAN, OUTPUT);
 
-  screen = new Screen();
   dht.begin();
-
   sbuff_next_idx = 0;
-  Animation *travelling_dot = new TravelingDotAnimation(60);
-  Animation *blinking_anim = new BlinkingAnimation(60);
-  static_anim = new StaticAnimation(60);
-  anim = new StartAnimation(60);
-  notify_layer = new NotificationLayer(60);
-  master_layer = new MasterLayer(60);
-  animManager = new AnimationsManager(anim, notify_layer, master_layer);
-  PanelHandler *phandler = new PanelHandler();
-  panel = new Panel(phandler);
-  animManager->add(static_anim);
-  animManager->add(travelling_dot);
-  animManager->add(blinking_anim);
 
-  FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS); // GRB ordering is typical
+  phandler = new PanelHandler();
+  panel = new Panel(phandler);
+  screen = new Screen();
+  animationManager = new AnimationsManager(leds);
+
+  FastLED.addLeds<WS2812B, DATA_PIN_WS, GRB>(leds, NUM_LEDS); // GRB ordering is typical
 
   FastLED.setCorrection(TypicalLEDStrip);
   for (int i = 0; i < NUM_LEDS; i++)
   {
     leds[i] = CRGB(0, 0, 0);
   }
-  //leds[0] = CRGB(0, 0, 100);
   FastLED.show();
   Serial.begin(115200);
   Serial.println("master");
