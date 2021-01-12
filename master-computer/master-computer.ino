@@ -12,6 +12,9 @@
 #include "src/utils/utils.h"
 #include "src/animation/animation.h"
 #include "src/Panel/Panel.h"
+#include "src/MQTTCommunicator/MQTTCommunicator.h"
+#include <FastLED.h>
+// #include <Arduino.h>
 
 Screen *screen;
 CRGB leds[NUM_LEDS];
@@ -22,6 +25,8 @@ Thread dhtThread = Thread();
 Thread animationThread = Thread();
 Thread synchronizationThread = Thread();
 Thread screenThread = Thread();
+Thread mqttConnectionThread = Thread();
+Thread mqttHsvStripUpdateThread = Thread();
 //Thread serial_task = Thread();
 //Thread panel_serial_task = Thread();
 ThreadController controll = ThreadController();
@@ -29,6 +34,7 @@ DHT_Unified dht(DHTPIN, DHTTYPE);
 Menu MENU;
 Panel *panel;
 PanelHandler *phandler;
+MQTTCommunicator *mqtt;
 uint8_t colorArray[3];
 //class serial buffer jest potrzebne
 
@@ -348,6 +354,15 @@ void screen_task(void)
 {
   screen->updateScreen();
 }
+void mqtt_reconnect_task(void){
+  mqtt->mqtt_reconnect();
+}
+void mqtt_update_strip_hsv_task(void){
+  if(!mqtt->hsv_up_to_date){
+    mqtt->update_led_strip_hsv();
+    mqtt->hsv_up_to_date = true;
+  }
+}
 
 
 //TODO
@@ -387,6 +402,7 @@ void setup()
 
   // pinMode(4, INPUT);
   // pinMode(3, OUTPUT);
+
   pinMode(LAPTOP_FAN, OUTPUT);
 
   dht.begin();
@@ -409,11 +425,15 @@ void setup()
   Serial.println("master");
   // sanity check delay - allows reprogramming if accidently blowing power w/leds
   delay(300);
-
+  mqtt = new MQTTCommunicator();
   dhtThread.onRun(temp_hum_task);
   dhtThread.setInterval(3000);
   screenThread.onRun(screen_task);
   screenThread.setInterval(35);
+  mqttConnectionThread.onRun(mqtt_reconnect_task);
+  mqttConnectionThread.setInterval(1000);
+  mqttHsvStripUpdateThread.onRun(mqtt_update_strip_hsv_task);
+  mqttHsvStripUpdateThread.setInterval(100);
   synchronizationThread.onRun(synchronization_task);
   synchronizationThread.setInterval(3000);
   animationThread.onRun(animation_task);
@@ -425,6 +445,8 @@ void setup()
   controll.add(&synchronizationThread);
   controll.add(&screenThread);
   controll.add(&dhtThread);
+  controll.add(&mqttConnectionThread);
+  controll.add(&mqttHsvStripUpdateThread);
   pcSerial1.begin(57600, SWSERIAL_8N1, SERIAL_RX_PIN, SERIAL_TX_PIN, false, 32, 32);
 
   #ifdef DEBUG
@@ -436,4 +458,5 @@ void loop()
   controll.run();
   panel_serial_task();
   serial_task();
+  mqtt->loop();
 }

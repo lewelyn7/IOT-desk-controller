@@ -6,7 +6,7 @@
 
 // #define CLOCK_PIN 15
 
-// #define DEBUG 1
+#define DEBUG 1
 #define PIEZZO 10
 
 #define LAPTOP_FAN 15
@@ -21,11 +21,13 @@ class Panel;
 class PanelHandler;
 class AnimationsManager;
 class Screen;
+class MQTTCommunicator;
 
 extern Screen *screen;
 extern SoftwareSerial pcSerial1; // rx, tx
 extern AnimationsManager *animationManager;
 extern Panel *panel;
 extern PanelHandler *phandler;
+extern MQTTCommunicator *mqtt;
 
 #endif // __GLOBALS_H__

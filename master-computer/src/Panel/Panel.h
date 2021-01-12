@@ -5,6 +5,7 @@
 #include "../utils/utils.h"
 #include "../animation/animation.h"
 #include "../LedDisplay/LedDisplay.h"
+#include "../MQTTCommunicator/MQTTCommunicator.h"
 #include <Arduino.h>
 #define PANEL_LEDS_NUM 6
 #define PANEL_SWITCHES_NUM 8

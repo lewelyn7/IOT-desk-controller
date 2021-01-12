@@ -279,11 +279,13 @@ void Panel::switches_reset()
   void PanelHandler::s1_on()
 {
   animationManager->master_layer->On();
+  mqtt->light_strip1_on();
   panel->led_on(0);
 }
 void PanelHandler::s1_off()
 {
   animationManager->master_layer->Off();
+  mqtt->light_strip1_off();
   panel->led_off(0);
 }
 void PanelHandler::s1_toggle()
@@ -308,11 +310,13 @@ void PanelHandler::s3_on()
 {
   digitalWrite(LAPTOP_FAN, HIGH);
   panel->led_on(2);
+  mqtt->desk_bulb_on();
 }
 void PanelHandler::s3_off()
 {
   digitalWrite(LAPTOP_FAN, LOW);
   panel->led_off(2);
+  mqtt->desk_bulb_off();
 
 }
 void PanelHandler::s3_toggle()
@@ -372,12 +376,14 @@ void PanelHandler::e1_left()
   animationManager->get_current()->setH(animationManager->get_current()->h - 2);
   uint8_t val = animationManager->get_current()->h;
   screen->displayForTime(val, 40, 1);
+  mqtt->hsv_up_to_date = false;
 }
 void PanelHandler::e1_right()
 {
   animationManager->get_current()->setH(animationManager->get_current()->h + 2);
   uint8_t val = animationManager->get_current()->h;
   screen->displayForTime(val, 40, 1);
+  mqtt->hsv_up_to_date = false;
 }
 void PanelHandler::e1_btn()
 {
@@ -396,12 +402,14 @@ void PanelHandler::e3_left()
   animationManager->get_current()->setS(animationManager->get_current()->s - 5);
   uint8_t val = animationManager->get_current()->s;
   screen->displayForTime(val, 40, 1);
+  mqtt->hsv_up_to_date = false;
 }
 void PanelHandler::e3_right()
 {
   animationManager->get_current()->setS(animationManager->get_current()->s + 5);
   uint8_t val = animationManager->get_current()->s;
   screen->displayForTime(val, 40, 1);
+  mqtt->hsv_up_to_date = false;
 }
 void PanelHandler::e3_btn()
 {
@@ -411,12 +419,14 @@ void PanelHandler::e4_left()
   animationManager->get_current()->setV(animationManager->get_current()->v - 5);
   uint8_t val = animationManager->get_current()->v;
   screen->displayForTime(val, 40, 1);
+  mqtt->hsv_up_to_date = false;
 }
 void PanelHandler::e4_right()
 {
   animationManager->get_current()->setV(animationManager->get_current()->v + 5);
   uint8_t val = animationManager->get_current()->v;
   screen->displayForTime(val, 40, 1);
+  mqtt->hsv_up_to_date = false;
 }
 void PanelHandler::e4_btn()
 {
