@@ -111,11 +111,13 @@ public:
   bool blinker;
 
   bool muted = true;
+  bool discord_muted = true;
   NotificationLayer(CRGB *leds, uint8_t frames);
 
   void tick();
   void mute();
   void unmute();
+  void discord_mute();
   void mute_toggle();
   void on();
   void off();

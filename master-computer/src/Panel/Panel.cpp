@@ -419,14 +419,14 @@ void PanelHandler::e4_left()
   animationManager->get_current()->setV(animationManager->get_current()->v - 5);
   uint8_t val = animationManager->get_current()->v;
   screen->displayForTime(val, 40, 1);
-  mqtt->hsv_up_to_date = false;
+  mqtt->led_brig_up_to_date = false;
 }
 void PanelHandler::e4_right()
 {
   animationManager->get_current()->setV(animationManager->get_current()->v + 5);
   uint8_t val = animationManager->get_current()->v;
   screen->displayForTime(val, 40, 1);
-  mqtt->hsv_up_to_date = false;
+  mqtt->led_brig_up_to_date = false;
 }
 void PanelHandler::e4_btn()
 {

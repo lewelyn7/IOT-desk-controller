@@ -782,12 +782,17 @@ void NotificationLayer::tick()
   {
     if (on_switch)
     {
-      if (!muted)
+      if (!muted && !discord_muted)
       {
         for (uint8_t j = 33; j < 42; j++)
         {
           global_set_hsv(leds, j, 10, 230, 250);
         }
+      }else if(discord_muted && !muted){
+        for (uint8_t j = 33; j < 42; j++)
+        {
+          global_set_hsv(leds, j, 56, 230, 250);
+        }        
       }
       if (blinker)
       {
@@ -800,10 +805,17 @@ void NotificationLayer::tick()
 void NotificationLayer::mute() 
   {
     muted = true;
+    discord_muted = true;
   }
 void NotificationLayer::unmute() 
   {
     muted = false;
+    discord_muted = false;
+  }
+  
+  void NotificationLayer::discord_mute() 
+  {
+    discord_muted = true;
   }
 
 void NotificationLayer::mute_toggle() 

@@ -274,6 +274,10 @@ void serial_task(void)
       {
         animationManager->notify_layer->unmute();
       }
+      else if (serial_buffer[0] == 'd')
+      {
+        animationManager->notify_layer->discord_mute();
+      }      
       else if (serial_buffer[0] == 'S')
       {
         if (serial_buffer[1] == '1' && serial_buffer[2] == 'u')
@@ -362,6 +366,10 @@ void mqtt_update_strip_hsv_task(void){
     mqtt->update_led_strip_hsv();
     mqtt->hsv_up_to_date = true;
   }
+  if(!mqtt->led_brig_up_to_date){
+    mqtt->update_led_brightness();
+    mqtt->led_brig_up_to_date = true;
+  }
 }
 
 
@@ -415,7 +423,7 @@ void setup()
 
   FastLED.addLeds<WS2812B, DATA_PIN_WS, GRB>(leds, NUM_LEDS); // GRB ordering is typical
 
-  FastLED.setCorrection(TypicalLEDStrip);
+  FastLED.setCorrection( 0xC8DCFF);
   for (int i = 0; i < NUM_LEDS; i++)
   {
     leds[i] = CRGB(0, 0, 0);

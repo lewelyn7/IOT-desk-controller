@@ -14,9 +14,11 @@ class MQTTCommunicator{
 
         WiFiClient espClient;
         PubSubClient client;
+        char reply_msg[32];
 
     public:
         bool hsv_up_to_date = true;
+        bool led_brig_up_to_date = true;
         MQTTCommunicator();
         void update_led_strip_hsv();
         void mqtt_reconnect();
@@ -26,6 +28,7 @@ class MQTTCommunicator{
         void desk_bulb_on();
         void light_strip1_off();
         void light_strip1_on();
+        void update_led_brightness();
 
 
 };

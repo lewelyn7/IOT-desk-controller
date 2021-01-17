@@ -46,8 +46,7 @@ void message_callback(char* topic, byte* message, unsigned int length)
         reply_msg[length] = '\0';
         int value = (uint8_t)atoi(reply_msg);
         animationManager->get_current()->setV(value);
-        sprintf(reply_msg, "{\"brightness\": %d}", value);
-        mqtt->send_msg(led_strip_brig_state, reply_msg);
+        mqtt->update_led_brightness();
     }else if(!strcmp(topic, led_strip_rgb_cmd)){
         strncpy(reply_msg, (char*)message, length);
         reply_msg[length] = '\0';
@@ -84,10 +83,15 @@ void message_callback(char* topic, byte* message, unsigned int length)
         }       
     }
 }
+void MQTTCommunicator::update_led_brightness() 
+{
+    int value = animationManager->get_current()->v;
+    sprintf(reply_msg, "{\"brightness\": %d}", value);
+    mqtt->send_msg(led_strip_brig_state, reply_msg);
+}
 
 void MQTTCommunicator::update_led_strip_hsv() 
 {
-    char reply_msg[32];
     Animation * anim = animationManager->get_current();
     CRGB color = CRGB();
     color.setHSV(anim->h, anim->s, anim->v);
@@ -194,6 +198,8 @@ void MQTTCommunicator::light_strip1_on()
 {
     mqtt->send_msg(led_strip_state, "{\"state\": \"ON\"}");
 }
+
+
 
 
 
