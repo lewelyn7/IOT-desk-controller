@@ -4,7 +4,7 @@
 #include <SoftwareSerial.h>
 #define DATA_PIN_WS 5 // todo pins changed only for testing
 
-// #define CLOCK_PIN 15
+// #define DsClock_PIN 15
 
 #define DEBUG 1
 #define PIEZZO 10
@@ -22,7 +22,9 @@ class PanelHandler;
 class AnimationsManager;
 class Screen;
 class MQTTCommunicator;
+class DsClock;
 
+extern DsClock *dsclock;
 extern Screen *screen;
 extern SoftwareSerial pcSerial1; // rx, tx
 extern AnimationsManager *animationManager;

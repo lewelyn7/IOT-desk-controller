@@ -13,9 +13,11 @@
 #include "src/animation/animation.h"
 #include "src/Panel/Panel.h"
 #include "src/MQTTCommunicator/MQTTCommunicator.h"
+#include "src/DsClock/DsClock.h"
 #include <FastLED.h>
-// #include <Arduino.h>
 
+
+DsClock *dsclock;
 Screen *screen;
 CRGB leds[NUM_LEDS];
 AnimationsManager *animationManager;
@@ -374,33 +376,10 @@ void mqtt_update_strip_hsv_task(void){
 
 
 //TODO
-bool temp = true;
+
 void temp_hum_task(void)
 {
-  sensors_event_t event;
-  if(temp){
-    dht.temperature().getEvent(&event);
-    if (isnan(event.temperature))
-    {
-      Serial.println(F("Error reading temperature!"));
-    }
-    else
-    {
-      screen->displayTemp(event.temperature);
-    }
-    temp = false;
-  }else{
-     dht.humidity().getEvent(&event);
-    if (isnan(event.relative_humidity))
-    {
-      Serial.println(F("Error reading temperature!"));
-    }
-    else
-    {
-      screen->displayHum(event.relative_humidity);
-    }
-    temp = true;   
-  }
+
 
 }
 void setup()
@@ -416,10 +395,12 @@ void setup()
   dht.begin();
   sbuff_next_idx = 0;
 
+  dsclock = new DsClock();
   phandler = new PanelHandler();
   panel = new Panel(phandler);
   screen = new Screen();
   animationManager = new AnimationsManager(leds);
+
 
   FastLED.addLeds<WS2812B, DATA_PIN_WS, GRB>(leds, NUM_LEDS); // GRB ordering is typical
 

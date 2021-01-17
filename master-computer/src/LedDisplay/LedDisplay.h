@@ -6,28 +6,43 @@
 #ifndef __LEDDISPLAY_H__
 #define __LEDDISPLAY_H__
 
+class ScreenLayer{
+  public:
+    int8_t digits[4];
+    uint8_t timer;
+    bool timer_enabled;
+    bool visibility;
+};
+
+#define LAYERS_NUMBER 4
+#define LAYERS_NUMBER_ALL 6
 class Screen
 {
 public:
-  int8_t digits[3][4];
-  uint8_t prio_counter[3];
-  uint8_t prio_counter_enable[3];
-  uint8_t it;
+  ScreenLayer *main;
+  ScreenLayer notifications;
+  ScreenLayer errors;
+  ScreenLayer temp;
+  ScreenLayer time;
+  ScreenLayer timer;
+  ScreenLayer general;
+  ScreenLayer *all_main[LAYERS_NUMBER_ALL];
   TM1637 tm1637;
+  int8_t *tmp_digits;
+  int8_t clear_digits[4] = {0x7f, 0x7f, 0x7f, 0x7f};
   bool master_on;
 
   Screen();
-  void display(uint8_t digits[], uint8_t priority = 0);
-  void displayAndUpdate(uint8_t digits[], uint8_t priority = 0);
-  void clearAllPrirorities();
+  void clearAlldigits(ScreenLayer * layer);
+  void display(uint8_t digits[], uint8_t timer);
+  void display(uint8_t digits[]);
+  void display(int number);
+  void display(int number, uint8_t time);
+
   void updateScreen();
-  void clearOnePriority(uint8_t prio);
   void off(void);
   void on(void);
   void toggle(void);
-  void displayForTime(uint8_t digits[], uint8_t time, uint8_t priority = 0);
-  void displayForTime(uint16_t num, uint8_t time, uint8_t priority = 0);
-  void display(uint16_t num, uint8_t priority);
   void displayTemp(float num);
   void displayHum(float num);
 };

@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "ratio": "cpp",
-        "ranges": "cpp"
+        "ranges": "cpp",
+        "cstddef": "cpp"
     }
 }
