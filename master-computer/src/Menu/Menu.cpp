@@ -1,7 +1,7 @@
 #include "Menu.h"
 Menu::Menu() 
 {
-      state = MenuStates::Starting;
+state = MenuStates::Starting;
     serial_state = SerialStates::Ready;
 }
 

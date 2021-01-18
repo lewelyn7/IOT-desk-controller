@@ -45,6 +45,8 @@ public:
   void toggle(void);
   void displayTemp(float num);
   void displayHum(float num);
+  void displayTime(uint8_t first, uint8_t second);
+  void setTimeMode(void);
 };
 
 

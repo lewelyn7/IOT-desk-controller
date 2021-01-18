@@ -29,6 +29,8 @@ class MQTTCommunicator{
         void light_strip1_off();
         void light_strip1_on();
         void update_led_brightness();
+        void led_screen_on();
+        void led_screen_off();
 
 
 };

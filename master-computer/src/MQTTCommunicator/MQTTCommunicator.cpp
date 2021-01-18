@@ -15,6 +15,9 @@ const char * bulb_state = "desk/bulb/light/status";
 const char * bulb_available = "desk/bulb/light/ava";
 const char * bulb_cmd = "desk/bulb/light/switch";
 
+const char * led_screen_state = "desk/ledscreen/status";
+const char * led_screen_available = "desk/ledscreen/ava";
+const char * led_screen_cmd = "desk/ledscreen/switch";
 void print_byte_string(char * str, unsigned int len) 
 {
     for(int i = 0; i < len; i++){
@@ -81,6 +84,17 @@ void message_callback(char* topic, byte* message, unsigned int length)
             digitalWrite(LAPTOP_FAN, LOW);
             mqtt->desk_bulb_off();
         }       
+    }else if(!strcmp(topic, led_screen_cmd)){
+        if(!strncmp((char*) message, "ON", length)){
+            screen->on();
+            panel->led_on(1);
+            mqtt->led_screen_on();
+        }
+        else if(!strncmp((char*) message, "OFF", length)){
+            screen->off();
+            panel->led_off(1);
+            mqtt->led_screen_off();
+        }
     }
 }
 void MQTTCommunicator::update_led_brightness() 
@@ -88,6 +102,16 @@ void MQTTCommunicator::update_led_brightness()
     int value = animationManager->get_current()->v;
     sprintf(reply_msg, "{\"brightness\": %d}", value);
     mqtt->send_msg(led_strip_brig_state, reply_msg);
+}
+
+void MQTTCommunicator::led_screen_on() 
+{
+    mqtt->send_msg(led_screen_state, "ON");
+}
+
+void MQTTCommunicator::led_screen_off() 
+{
+    mqtt->send_msg(led_screen_state, "OFF");
 }
 
 void MQTTCommunicator::update_led_strip_hsv() 
@@ -151,9 +175,13 @@ void MQTTCommunicator::mqtt_reconnect()
         }
         if(!client.subscribe(led_strip_brig_cmd)){
             Serial.println("subscription error");
+        }         
+        if(!client.subscribe(led_screen_cmd)){
+            Serial.println("subscription error");
         }                
         client.publish(led_strip_available, "online");
         client.publish(bulb_available, "online");
+        client.publish(led_screen_available, "online");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());

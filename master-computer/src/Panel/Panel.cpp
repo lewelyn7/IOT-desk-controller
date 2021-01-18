@@ -296,11 +296,13 @@ void PanelHandler::s2_on()
   
   screen->on();
   panel->led_on(1);
+  mqtt->led_screen_on();
 }
 void PanelHandler::s2_off()
 {
   screen->off();
   panel->led_off(1);
+  mqtt->led_screen_off();
 
 }
 void PanelHandler::s2_toggle()

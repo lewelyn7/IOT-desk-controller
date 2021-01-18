@@ -10,7 +10,7 @@ void DsClock::update_time()
     timeClient.update();
     //TODO date update
     RtcDateTime dt = RtcDateTime(2021,1,17,
-        timeClient.getHours(), 
+        (timeClient.getHours() + 1)%24, 
         timeClient.getMinutes(), 
         timeClient.getSeconds());
     //ERROR HANDLING INSTRUCTION IN LIB ON GITHUB

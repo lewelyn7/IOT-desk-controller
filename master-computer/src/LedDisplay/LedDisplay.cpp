@@ -27,23 +27,19 @@ Screen::Screen()
     clearAlldigits(&errors);
     errors.visibility = false;
     errors.timer_enabled = false;
+
+    this->time.visibility = true;
   }
 void Screen::clearAlldigits(ScreenLayer * layer){
   for(uint8_t i = 0; i < 4; i++){
     layer->digits[i] = 0x7f;
   }
 }
-void Screen::display(uint8_t digits[], uint8_t time) 
-{
-  this->display(digits);
-  general.timer_enabled = true;
-  general.timer = time;
-}
 
 
 void Screen::updateScreen() 
   {
-
+    tmp_digits = clear_digits;
     if (master_on)
     {
 
@@ -103,6 +99,13 @@ void Screen::display(uint8_t digits[])
   general.digits[1] = digits[1];
   general.digits[2] = digits[2];
   general.digits[3] = digits[3];
+  general.visibility = true;
+}
+void Screen::display(uint8_t digits[], uint8_t time) 
+{
+  this->display(digits);
+  general.timer_enabled = true;
+  general.timer = time;
 }
 
 void Screen::display(int number) 
@@ -111,6 +114,7 @@ void Screen::display(int number)
     general.digits[1] = (number/ 100) %10;
     general.digits[2] = (number/ 10) %10;
     general.digits[3] =  number%10;
+    general.visibility = true;
 
 }
 
@@ -135,4 +139,17 @@ void Screen::displayTemp(float num)
 void Screen::displayHum(float num) 
 {
 
+}
+
+void Screen::displayTime(uint8_t first, uint8_t second) 
+{
+  time.digits[0] = first / 10;
+  time.digits[1] = first % 10;
+  time.digits[2] = second / 10;
+  time.digits[3] = second % 10;  
+}
+
+void Screen::setTimeMode(void) 
+{
+  main = &time;
 }

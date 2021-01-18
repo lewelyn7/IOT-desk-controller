@@ -2,7 +2,7 @@
 #define __GLOBALS_H__
 
 #include <SoftwareSerial.h>
-#define DATA_PIN_WS 5 // todo pins changed only for testing
+#define DATA_PIN_WS 13 // todo pins changed only for testing
 
 // #define DsClock_PIN 15
 
@@ -10,7 +10,7 @@
 #define PIEZZO 10
 
 #define LAPTOP_FAN 15
-#define DHTPIN 13
+#define DHTPIN 10
 #define DHTTYPE DHT11
 #define SERIAL_RX_PIN 12
 #define SERIAL_TX_PIN 14

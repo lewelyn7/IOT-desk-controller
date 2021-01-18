@@ -379,8 +379,9 @@ void mqtt_update_strip_hsv_task(void){
 
 void temp_hum_task(void)
 {
-
-
+    dsclock->rtc_update();
+    screen->displayTime(dsclock->getHours(), dsclock->getMinutes());
+    screen->setTimeMode();
 }
 void setup()
 {
@@ -395,7 +396,6 @@ void setup()
   dht.begin();
   sbuff_next_idx = 0;
 
-  dsclock = new DsClock();
   phandler = new PanelHandler();
   panel = new Panel(phandler);
   screen = new Screen();
@@ -415,8 +415,10 @@ void setup()
   // sanity check delay - allows reprogramming if accidently blowing power w/leds
   delay(300);
   mqtt = new MQTTCommunicator();
+  dsclock = new DsClock();
+  dsclock->update_time();
   dhtThread.onRun(temp_hum_task);
-  dhtThread.setInterval(3000);
+  dhtThread.setInterval(1000);
   screenThread.onRun(screen_task);
   screenThread.setInterval(35);
   mqttConnectionThread.onRun(mqtt_reconnect_task);
