@@ -1,5 +1,7 @@
 
 #include "MQTTCommunicator.h"
+
+
 const char * led_strip_state = "desk/strip1/light/status";
 const char * led_strip_available = "desk/strip1/light/ava";
 const char * led_strip_cmd = "desk/strip1/light/switch";

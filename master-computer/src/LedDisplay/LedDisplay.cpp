@@ -93,36 +93,48 @@ void Screen::toggle(void)
     master_on = master_on ? false : true;
   }
   
-void Screen::display(uint8_t digits[]) 
+void Screen::display(int8_t digits[], ScreenLayer * layer) 
 {
-  general.digits[0] = digits[0];
-  general.digits[1] = digits[1];
-  general.digits[2] = digits[2];
-  general.digits[3] = digits[3];
-  general.visibility = true;
+  if(layer == NULL){
+    layer = &general;
+  }
+  layer->digits[0] = digits[0];
+  layer->digits[1] = digits[1];
+  layer->digits[2] = digits[2];
+  layer->digits[3] = digits[3];
+  layer->visibility = true;
 }
-void Screen::display(uint8_t digits[], uint8_t time) 
+void Screen::display(int8_t digits[], uint8_t time, ScreenLayer * layer) 
 {
-  this->display(digits);
-  general.timer_enabled = true;
-  general.timer = time;
-}
-
-void Screen::display(int number) 
-{
-    general.digits[0] = number/ 1000;
-    general.digits[1] = (number/ 100) %10;
-    general.digits[2] = (number/ 10) %10;
-    general.digits[3] =  number%10;
-    general.visibility = true;
-
+  if(layer == NULL){
+    layer = &general;
+  }  
+  this->display(digits, layer);
+  layer->timer_enabled = true;
+  layer->timer = time;
 }
 
-void Screen::display(int number, uint8_t time) 
+void Screen::display(int number, ScreenLayer * layer) 
 {
-  this->display(number);
-  general.timer_enabled = true;
-  general.timer = time;
+    if(layer == NULL){
+      layer = &general;
+    }
+    layer->digits[0] = number/ 1000;
+    layer->digits[1] = (number/ 100) %10;
+    layer->digits[2] = (number/ 10) %10;
+    layer->digits[3] =  number%10;
+    layer->visibility = true;
+
+}
+
+void Screen::display(int number, uint8_t time, ScreenLayer * layer) 
+{
+  if(layer == NULL){
+    layer = &general;
+  }   
+  this->display(number, layer);
+  layer->timer_enabled = true;
+  layer->timer = time;
 
 }
 
@@ -149,7 +161,21 @@ void Screen::displayTime(uint8_t first, uint8_t second)
   time.digits[3] = second % 10;  
 }
 
-void Screen::setTimeMode(void) 
+void Screen::setMode(LedScreenModes mode) 
 {
-  main = &time;
+    switch (mode)
+    {
+    case Time:
+          main = &time;
+          break;
+    case Timer:
+          main = &timer;
+          break;
+    case Temp:
+          main = &temp;
+          break;
+    default: //General
+          main = &general;
+          break;
+    }
 }

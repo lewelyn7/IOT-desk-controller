@@ -13,7 +13,11 @@ class ScreenLayer{
     bool timer_enabled;
     bool visibility;
 };
-
+enum LedScreenModes{
+  FIRST = 0,
+  Time, Timer, General,
+   Temp, LAST
+};
 #define LAYERS_NUMBER 4
 #define LAYERS_NUMBER_ALL 6
 class Screen
@@ -34,10 +38,10 @@ public:
 
   Screen();
   void clearAlldigits(ScreenLayer * layer);
-  void display(uint8_t digits[], uint8_t timer);
-  void display(uint8_t digits[]);
-  void display(int number);
-  void display(int number, uint8_t time);
+  void display(int8_t digits[], uint8_t timer, ScreenLayer*layer = (ScreenLayer*)NULL);
+  void display(int8_t digits[], ScreenLayer * layer = (ScreenLayer*)NULL);
+  void display(int number, ScreenLayer * layer = (ScreenLayer*)NULL);
+  void display(int number, uint8_t time, ScreenLayer * layer = (ScreenLayer*)NULL);
 
   void updateScreen();
   void off(void);
@@ -46,7 +50,7 @@ public:
   void displayTemp(float num);
   void displayHum(float num);
   void displayTime(uint8_t first, uint8_t second);
-  void setTimeMode(void);
+  void setMode(LedScreenModes mode);
 };
 
 
