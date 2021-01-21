@@ -84,4 +84,5 @@ int8_t mode_name[4] = {0x7f, 0x7f, 0x7f, 0x7f};
       ScreenLayer* lay = &(*screen).notifications;
       screen->display((int)this->led_screen_mode,20, lay);
       screen->setMode(this->led_screen_mode);
+      mqtt->update_led_scr_mode();
 }

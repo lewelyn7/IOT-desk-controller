@@ -1,6 +1,8 @@
 
 #include "MQTTCommunicator.h"
 
+const char * desk_last_will_topic = "desk/availability";
+const char * desk_last_will_payload = "offline";
 
 const char * led_strip_state = "desk/strip1/light/status";
 const char * led_strip_available = "desk/strip1/light/ava";
@@ -17,9 +19,13 @@ const char * bulb_state = "desk/bulb/light/status";
 const char * bulb_available = "desk/bulb/light/ava";
 const char * bulb_cmd = "desk/bulb/light/switch";
 
+const char * led_screen_general = "desk/ledscreen/general";
+const char * led_screen_general_t_set = "desk/ledscreen/general/time";
 const char * led_screen_state = "desk/ledscreen/status";
 const char * led_screen_available = "desk/ledscreen/ava";
 const char * led_screen_cmd = "desk/ledscreen/switch";
+const char * desk_led_scr_mode_cmd = "desk/ledscreen/mode/cmd";
+const char * desk_led_scr_mode_status = "desk/ledscreen/mode/status";
 void print_byte_string(char * str, unsigned int len) 
 {
     for(int i = 0; i < len; i++){
@@ -97,6 +103,31 @@ void message_callback(char* topic, byte* message, unsigned int length)
             panel->led_off(1);
             mqtt->led_screen_off();
         }
+    }else if(!strcmp(topic, desk_led_scr_mode_cmd)){
+        //strncpy(reply_msg, (char*)message, length);
+        if(!strncmp((char*) message, "time", length)){
+            screen->setMode(LedScreenModes::Time);
+        }else if(!strncmp((char*) message, "timer", length)){
+            screen->setMode(LedScreenModes::Timer);
+        }else if(!strncmp((char*) message, "general", length)){
+            screen->setMode(LedScreenModes::General);
+        }else if(!strncmp((char*) message, "temp", length)){
+            screen->setMode(LedScreenModes::Temp);
+        }    
+        mqtt->update_led_scr_mode();
+        
+    }else if(!strcmp(topic, led_screen_general)){
+        if(length > 4){
+            screen->copyToGeneralBuff((char*)message, length);
+        }else if(length == 4){
+            screen->display((int8_t*) message, &screen->general );
+        }
+
+    }else if(!strcmp(topic, led_screen_general_t_set)){
+        strncpy(reply_msg, (char*)message, length);
+        reply_msg[length] = '\0';
+        uint8_t value = (uint8_t)atoi(reply_msg);        
+        screen->time_iter_setting = value;
     }
 }
 void MQTTCommunicator::update_led_brightness() 
@@ -140,6 +171,8 @@ MQTTCommunicator::MQTTCommunicator()
     Serial.println(WiFi.localIP());
     client.setServer(mqtt_server, 1883);
     client.setCallback(message_callback);
+    client.setKeepAlive(30);
+    client.setSocketTimeout(45);
     mqtt_reconnect();
     Serial.println("topic subscribe");
 
@@ -163,7 +196,7 @@ void MQTTCommunicator::mqtt_reconnect()
     String clientId = "ESP8266Client-";
     clientId += String(random(0xffff), HEX);
     // Attempt to connect
-    if (client.connect(clientId.c_str())) {
+    if (client.connect(clientId.c_str(), desk_last_will_topic, 1, 1, desk_last_will_payload)) {
       Serial.println("MQTT connected");
       // Once connected, publish an announcement...
         if(!client.subscribe(led_strip_cmd)){
@@ -180,10 +213,20 @@ void MQTTCommunicator::mqtt_reconnect()
         }         
         if(!client.subscribe(led_screen_cmd)){
             Serial.println("subscription error");
-        }                
+        }   
+        if(!client.subscribe(desk_led_scr_mode_cmd)){
+            Serial.println("subscription error");
+        }      
+        if(!client.subscribe(led_screen_general_t_set)){
+            Serial.println("subscription error");
+        } 
+        if(!client.subscribe(led_screen_general)){
+            Serial.println("subscription error");
+        }                                
         client.publish(led_strip_available, "online");
         client.publish(bulb_available, "online");
         client.publish(led_screen_available, "online");
+        client.publish(desk_last_will_topic, "online");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -227,6 +270,10 @@ void MQTTCommunicator::light_strip1_off()
 void MQTTCommunicator::light_strip1_on() 
 {
     mqtt->send_msg(led_strip_state, "{\"state\": \"ON\"}");
+}
+void MQTTCommunicator::update_led_scr_mode()
+{
+    mqtt->send_msg(desk_led_scr_mode_status, screen->get_mode_str_representation());
 }
 
 

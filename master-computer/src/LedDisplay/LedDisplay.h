@@ -31,11 +31,19 @@ public:
   ScreenLayer timer;
   ScreenLayer general;
   ScreenLayer *all_main[LAYERS_NUMBER_ALL];
+  LedScreenModes curr_mode;
+  const char * temp_str = "temp";
+  const char * time_str = "time";
+  const char * timer_str = "timer";
+  const char * general_str = "general";
   TM1637 tm1637;
   int8_t *tmp_digits;
   int8_t clear_digits[4] = {0x7f, 0x7f, 0x7f, 0x7f};
   bool master_on;
-
+  char general_buffer[16];
+  char general_buffer_idx = 0;
+  uint8_t time_iter = 0;
+  uint8_t time_iter_setting = 40;
   Screen();
   void clearAlldigits(ScreenLayer * layer);
   void display(int8_t digits[], uint8_t timer, ScreenLayer*layer = (ScreenLayer*)NULL);
@@ -51,6 +59,9 @@ public:
   void displayHum(float num);
   void displayTime(uint8_t first, uint8_t second);
   void setMode(LedScreenModes mode);
+  const char* get_mode_str_representation();
+  void addToGeneralBuff(char c);
+  void copyToGeneralBuff(char * x, uint8_t size);
 };
 
 

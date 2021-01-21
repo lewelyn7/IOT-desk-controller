@@ -3,11 +3,13 @@
 Screen::Screen() 
     :tm1637(CLK_SCREEN, DATA_SCREEN)
   {
-    
+    for(int i = 0; i < 16; i++){
+      general_buffer[i] = 0x7f;
+    }  
     tm1637.init();
     tm1637.set(BRIGHT_TYPICAL); //BRIGHT_TYPICAL = 2,BRIGHT_DARKEST = 0,BRIGHTEST = 7;
     master_on = false;
-    main = &general;
+    setMode(General);
     all_main[0] = &general;
     all_main[1] = &time;
     all_main[2] = &temp;
@@ -35,7 +37,7 @@ void Screen::clearAlldigits(ScreenLayer * layer){
     layer->digits[i] = 0x7f;
   }
 }
-
+//TODO buffer length update and secure buffer from overflow and null pointer
 
 void Screen::updateScreen() 
   {
@@ -48,6 +50,17 @@ void Screen::updateScreen()
       }else{
         tmp_digits = clear_digits;
       }
+      if(curr_mode == General && general_buffer[general_buffer_idx] != 0x7f){
+
+        if(time_iter >= time_iter_setting){
+          general_buffer_idx = general_buffer_idx == 16-4 ? 0 : general_buffer_idx;
+          time_iter = 0;
+          general_buffer_idx++;          
+        }
+        tmp_digits = (int8_t*) general_buffer+general_buffer_idx; 
+        time_iter++;
+        
+      }      
       if(notifications.visibility){
         tmp_digits = notifications.digits;
       }
@@ -103,6 +116,7 @@ void Screen::display(int8_t digits[], ScreenLayer * layer)
   layer->digits[2] = digits[2];
   layer->digits[3] = digits[3];
   layer->visibility = true;
+  layer->timer_enabled = false;  
 }
 void Screen::display(int8_t digits[], uint8_t time, ScreenLayer * layer) 
 {
@@ -167,15 +181,51 @@ void Screen::setMode(LedScreenModes mode)
     {
     case Time:
           main = &time;
+          curr_mode = Time;
           break;
     case Timer:
           main = &timer;
+          curr_mode = Timer;
           break;
     case Temp:
           main = &temp;
+          curr_mode = Temp;
           break;
     default: //General
           main = &general;
+          curr_mode = General;
           break;
     }
+    
+}
+
+const char* Screen::get_mode_str_representation() 
+{
+    switch (curr_mode)
+    {
+    case Time:
+          return time_str;
+          break;
+    case Timer:
+          return time_str;
+          break;
+    case Temp:
+          return time_str;
+          break;
+    default: //General
+          return general_str;
+          break;
+    }  
+}
+
+void Screen::addToGeneralBuff(char c) 
+{
+  
+}
+
+void Screen::copyToGeneralBuff(char * x, uint8_t size) 
+{
+  strncpy(general_buffer, x, size);
+  general_buffer[size] = 0x7f;
+  general_buffer_idx = 0;
 }

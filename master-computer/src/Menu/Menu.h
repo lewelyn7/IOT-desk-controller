@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include "../globals.h"
 #include "../LedDisplay/LedDisplay.h"
+#include "../MQTTCommunicator/MQTTCommunicator.h"
 enum class MenuStates
 {
   Starting,
