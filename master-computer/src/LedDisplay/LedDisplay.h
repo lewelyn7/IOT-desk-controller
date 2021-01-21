@@ -20,6 +20,7 @@ enum LedScreenModes{
 };
 #define LAYERS_NUMBER 4
 #define LAYERS_NUMBER_ALL 6
+#define GENERAL_LAYER_BUF_SIZE 64
 class Screen
 {
 public:
@@ -40,8 +41,9 @@ public:
   int8_t *tmp_digits;
   int8_t clear_digits[4] = {0x7f, 0x7f, 0x7f, 0x7f};
   bool master_on;
-  char general_buffer[16];
+  char general_buffer[GENERAL_LAYER_BUF_SIZE];
   char general_buffer_idx = 0;
+  bool general_buffer_replay = false;
   uint8_t time_iter = 0;
   uint8_t time_iter_setting = 40;
   Screen();

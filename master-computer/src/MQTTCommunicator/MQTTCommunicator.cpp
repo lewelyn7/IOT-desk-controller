@@ -118,7 +118,14 @@ void message_callback(char* topic, byte* message, unsigned int length)
         
     }else if(!strcmp(topic, led_screen_general)){
         if(length > 4){
-            screen->copyToGeneralBuff((char*)message, length);
+            if(message[0] == '@'){
+                screen->copyToGeneralBuff((char*)message+1, length-1);
+                screen->general_buffer_replay = true;
+            }else{
+                screen->copyToGeneralBuff((char*)message+1, length-1);
+                screen->general_buffer_replay = false;
+            }
+
         }else if(length == 4){
             screen->display((int8_t*) message, &screen->general );
         }

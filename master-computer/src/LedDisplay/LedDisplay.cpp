@@ -3,7 +3,7 @@
 Screen::Screen() 
     :tm1637(CLK_SCREEN, DATA_SCREEN)
   {
-    for(int i = 0; i < 16; i++){
+    for(int i = 0; i < GENERAL_LAYER_BUF_SIZE; i++){
       general_buffer[i] = 0x7f;
     }  
     tm1637.init();
@@ -50,16 +50,18 @@ void Screen::updateScreen()
       }else{
         tmp_digits = clear_digits;
       }
-      if(curr_mode == General && general_buffer[general_buffer_idx] != 0x7f){
-
-        if(time_iter >= time_iter_setting){
-          general_buffer_idx = general_buffer_idx == 16-4 ? 0 : general_buffer_idx;
-          time_iter = 0;
-          general_buffer_idx++;          
+      if(curr_mode == General){
+        if(general_buffer[general_buffer_idx] != 0x7f || general_buffer_replay){
+          if(time_iter >= time_iter_setting){
+            general_buffer_idx = general_buffer_idx == GENERAL_LAYER_BUF_SIZE-4 ? 0 : general_buffer_idx;
+            
+            time_iter = 0;
+            general_buffer_idx++;      
+            if(general_buffer[general_buffer_idx-1] == 0x7f) general_buffer_idx = 0;
+          }
+          tmp_digits = (int8_t*) general_buffer+general_buffer_idx; 
+          time_iter++;
         }
-        tmp_digits = (int8_t*) general_buffer+general_buffer_idx; 
-        time_iter++;
-        
       }      
       if(notifications.visibility){
         tmp_digits = notifications.digits;
@@ -225,7 +227,14 @@ void Screen::addToGeneralBuff(char c)
 
 void Screen::copyToGeneralBuff(char * x, uint8_t size) 
 {
+  if(size > 60 ){
+    return;
+  } //ERROR
+
   strncpy(general_buffer, x, size);
   general_buffer[size] = 0x7f;
+  general_buffer[size+1] = 0x7f;
+  general_buffer[size+2] = 0x7f;
+  general_buffer[size+3] = 0x7f;
   general_buffer_idx = 0;
 }
