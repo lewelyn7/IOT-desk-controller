@@ -226,7 +226,8 @@ void panel_serial_task()
   // clear_pc_serial();
 }
 
-char serial_buffer[20];
+#define MSERIAL_BUFFER_SIZE 21
+char serial_buffer[MSERIAL_BUFFER_SIZE];
 uint8_t sbuff_next_idx = 0;
 bool serial_msg_ready = false;
 void serial_task(void)
@@ -240,7 +241,7 @@ void serial_task(void)
       serial_msg_ready = true;
     }
     sbuff_next_idx++;
-    if (sbuff_next_idx == 20)
+    if (sbuff_next_idx == MSERIAL_BUFFER_SIZE-1)
     {
       sbuff_next_idx = 0;
       serial_msg_ready = true;
@@ -248,6 +249,7 @@ void serial_task(void)
   }
   if (serial_msg_ready)
   {
+    serial_buffer[sbuff_next_idx] = '\0';
 #ifdef DEBUG
     Serial.println("Serial");
     Serial.println(serial_buffer);
@@ -269,68 +271,26 @@ void serial_task(void)
 
         animationManager->static_anim->setHSV(colorArray[0], colorArray[1], colorArray[2]);
       }
-      else if (serial_buffer[0] == 'm')
+      else if (!strncmp(serial_buffer, "m\n", MSERIAL_BUFFER_SIZE))
       {
         animationManager->notify_layer->mute();
       }
-      else if (serial_buffer[0] == 'u')
+      else if (!strncmp(serial_buffer, "u\n", MSERIAL_BUFFER_SIZE))
       {
         animationManager->notify_layer->unmute();
       }
-      else if (serial_buffer[0] == 'd')
+      else if (!strncmp(serial_buffer, "d\n", MSERIAL_BUFFER_SIZE))
       {
         animationManager->notify_layer->discord_mute();
-      }      
-      else if (serial_buffer[0] == 'S')
+      }   
+      else if (!strncmp(serial_buffer, "tsleep\n", MSERIAL_BUFFER_SIZE))
       {
-        if (serial_buffer[1] == '1' && serial_buffer[2] == 'u')
-        {
-
-          if (animationManager->static_anim->v == 0)
-          {
-            pcSerial1.write(D1N);
-            animationManager->static_anim->v = 200;
-          }
-          else
-          {
-            pcSerial1.write(D1F);
-            animationManager->static_anim->v = 0;
-          }
-        }
-      }
-      else if (serial_buffer[0] == 'e' && serial_buffer[1] == '1')
+        animationManager->next();
+      }   
+      else if (!strncmp(serial_buffer, "wakeup\n", MSERIAL_BUFFER_SIZE))
       {
-        if (serial_buffer[2] == 'r')
-        {
-          animationManager->static_anim->h += 2;
-        }
-        else if (serial_buffer[2] == 'l')
-        {
-          animationManager->static_anim->h -= 2;
-        }
-      }
-      else if (serial_buffer[0] == 'e' && serial_buffer[1] == '3')
-      {
-        if (serial_buffer[2] == 'r')
-        {
-          animationManager->static_anim->s += 5;
-        }
-        else if (serial_buffer[2] == 'l')
-        {
-          animationManager->static_anim->s -= 5;
-        }
-      }
-      else if (serial_buffer[0] == 'e' && serial_buffer[1] == '4')
-      {
-        if (serial_buffer[2] == 'r')
-        {
-          animationManager->static_anim->v += 5;
-        }
-        else if (serial_buffer[2] == 'l')
-        {
-          animationManager->static_anim->v -= 5;
-        }
-      }
+        animationManager->previous();
+      }                    
     }
     serial_msg_ready = false;
     sbuff_next_idx = 0;

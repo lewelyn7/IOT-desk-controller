@@ -944,8 +944,8 @@ AnimationsManager::AnimationsManager(CRGB *leds)
 
     anim_list = new LinkedList<Animation *>();
     anim_list->add(static_anim);
-    anim_list->add(blinking_anim);
     anim_list->add(tavel_dot_anim);
+    anim_list->add(blinking_anim);
     anim_list->add(start_anim);
     curr = static_anim;
   }
