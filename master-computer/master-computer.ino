@@ -33,7 +33,8 @@ Thread mqttHsvStripUpdateThread = Thread();
 //Thread panel_serial_task = Thread();
 ThreadController controll = ThreadController();
 DHT_Unified dht(DHTPIN, DHTTYPE);
-Menu MENU;
+
+Menu * menu;
 Panel *panel;
 PanelHandler *phandler;
 MQTTCommunicator *mqtt;
@@ -252,7 +253,7 @@ void serial_task(void)
     Serial.println(serial_buffer);
 #endif
 
-    if (MENU.serial_state == SerialStates::Ready)
+    if (menu->serial_state == SerialStates::Ready)
     {
       if (serial_buffer[0] == 'c')
       {
@@ -381,7 +382,6 @@ void temp_hum_task(void)
 {
     dsclock->rtc_update();
     screen->displayTime(dsclock->getHours(), dsclock->getMinutes());
-    screen->setTimeMode();
 }
 void setup()
 {
@@ -400,6 +400,7 @@ void setup()
   panel = new Panel(phandler);
   screen = new Screen();
   animationManager = new AnimationsManager(leds);
+  
 
 
   FastLED.addLeds<WS2812B, DATA_PIN_WS, GRB>(leds, NUM_LEDS); // GRB ordering is typical
@@ -414,13 +415,11 @@ void setup()
   Serial.println("master");
   // sanity check delay - allows reprogramming if accidently blowing power w/leds
   delay(300);
-  mqtt = new MQTTCommunicator();
-  dsclock = new DsClock();
-  dsclock->update_time();
+
   dhtThread.onRun(temp_hum_task);
   dhtThread.setInterval(1000);
   screenThread.onRun(screen_task);
-  screenThread.setInterval(35);
+  screenThread.setInterval(22);
   mqttConnectionThread.onRun(mqtt_reconnect_task);
   mqttConnectionThread.setInterval(1000);
   mqttHsvStripUpdateThread.onRun(mqtt_update_strip_hsv_task);
@@ -439,6 +438,10 @@ void setup()
   controll.add(&mqttConnectionThread);
   controll.add(&mqttHsvStripUpdateThread);
   pcSerial1.begin(57600, SWSERIAL_8N1, SERIAL_RX_PIN, SERIAL_TX_PIN, false, 32, 32);
+  mqtt = new MQTTCommunicator();
+  menu = new Menu();
+  dsclock = new DsClock();
+  dsclock->update_time();
 
   #ifdef DEBUG
   Serial.println("setup done\r\n");

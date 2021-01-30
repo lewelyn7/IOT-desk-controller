@@ -392,9 +392,11 @@ void PanelHandler::e1_btn()
 }
 void PanelHandler::e2_left()
 {
+  menu->tickModeSelectorLeft();
 }
 void PanelHandler::e2_right()
 {
+  menu->tickModeSelectorRight();
 }
 void PanelHandler::e2_btn()
 {

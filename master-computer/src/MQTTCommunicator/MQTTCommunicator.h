@@ -31,7 +31,7 @@ class MQTTCommunicator{
         void update_led_brightness();
         void led_screen_on();
         void led_screen_off();
-
+        void update_led_scr_mode();
 
 };
 #endif // __MQTTCOMMUNICATOR_H__

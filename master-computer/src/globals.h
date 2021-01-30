@@ -23,6 +23,7 @@ class AnimationsManager;
 class Screen;
 class MQTTCommunicator;
 class DsClock;
+class Menu;
 
 extern DsClock *dsclock;
 extern Screen *screen;
@@ -31,5 +32,6 @@ extern AnimationsManager *animationManager;
 extern Panel *panel;
 extern PanelHandler *phandler;
 extern MQTTCommunicator *mqtt;
+extern Menu * menu;
 
 #endif // __GLOBALS_H__

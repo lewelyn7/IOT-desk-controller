@@ -1,5 +1,9 @@
 
 #include "MQTTCommunicator.h"
+
+const char * desk_last_will_topic = "desk/availability";
+const char * desk_last_will_payload = "offline";
+
 const char * led_strip_state = "desk/strip1/light/status";
 const char * led_strip_available = "desk/strip1/light/ava";
 const char * led_strip_cmd = "desk/strip1/light/switch";
@@ -15,9 +19,13 @@ const char * bulb_state = "desk/bulb/light/status";
 const char * bulb_available = "desk/bulb/light/ava";
 const char * bulb_cmd = "desk/bulb/light/switch";
 
+const char * led_screen_general = "desk/ledscreen/general";
+const char * led_screen_general_t_set = "desk/ledscreen/general/time";
 const char * led_screen_state = "desk/ledscreen/status";
 const char * led_screen_available = "desk/ledscreen/ava";
 const char * led_screen_cmd = "desk/ledscreen/switch";
+const char * desk_led_scr_mode_cmd = "desk/ledscreen/mode/cmd";
+const char * desk_led_scr_mode_status = "desk/ledscreen/mode/status";
 void print_byte_string(char * str, unsigned int len) 
 {
     for(int i = 0; i < len; i++){
@@ -56,18 +64,6 @@ void message_callback(char* topic, byte* message, unsigned int length)
         int r;
         int g;
         int b;
-        // char * firstIndex = strchr(reply_msg, ',');
-        // char * secondIndex = strchr(firstIndex+1, ',');
-        // zawartość aktualizacji RIPA z horyzontem z wyłączonem horyzontem
-        // jak działają tracreouty, rejestracje TRAS 
-        // że zmieści się nie więcej niż 9 adresów
-        // od ARPA zaczynamy
-        // kończąc na 3 warstwie razem z translacją adresów
-        // TCP UDP - część ustan przy kolokwium praktyczntm
-        // ustno-praktyczne w ostatnim tygodniu krótkimn
-        // między 40 a 60 min trudniejsza część ustna 
-        // jak policzyć te punkty do anihilacji
-        // zademonstrować funkcjonowanie dzielonego horyzontu w najprostszej możliwej topologii
         sscanf(reply_msg, "%d,%d,%d", &r, &g, &b);
         CRGB color;         //one object creation
         color = CRGB(r,g,b);
@@ -95,6 +91,38 @@ void message_callback(char* topic, byte* message, unsigned int length)
             panel->led_off(1);
             mqtt->led_screen_off();
         }
+    }else if(!strcmp(topic, desk_led_scr_mode_cmd)){
+        //strncpy(reply_msg, (char*)message, length);
+        if(!strncmp((char*) message, "time", length)){
+            screen->setMode(LedScreenModes::Time);
+        }else if(!strncmp((char*) message, "timer", length)){
+            screen->setMode(LedScreenModes::Timer);
+        }else if(!strncmp((char*) message, "general", length)){
+            screen->setMode(LedScreenModes::General);
+        }else if(!strncmp((char*) message, "temp", length)){
+            screen->setMode(LedScreenModes::Temp);
+        }    
+        mqtt->update_led_scr_mode();
+        
+    }else if(!strcmp(topic, led_screen_general)){
+        if(length > 4){
+            if(message[0] == '@'){
+                screen->copyToGeneralBuff((char*)message+1, length-1);
+                screen->general_buffer_replay = true;
+            }else{
+                screen->copyToGeneralBuff((char*)message+1, length-1);
+                screen->general_buffer_replay = false;
+            }
+
+        }else if(length == 4){
+            screen->display((int8_t*) message, &screen->general );
+        }
+
+    }else if(!strcmp(topic, led_screen_general_t_set)){
+        strncpy(reply_msg, (char*)message, length);
+        reply_msg[length] = '\0';
+        uint8_t value = (uint8_t)atoi(reply_msg);        
+        screen->time_iter_setting = value;
     }
 }
 void MQTTCommunicator::update_led_brightness() 
@@ -138,6 +166,8 @@ MQTTCommunicator::MQTTCommunicator()
     Serial.println(WiFi.localIP());
     client.setServer(mqtt_server, 1883);
     client.setCallback(message_callback);
+    client.setKeepAlive(30);
+    client.setSocketTimeout(45);
     mqtt_reconnect();
     Serial.println("topic subscribe");
 
@@ -158,10 +188,10 @@ void MQTTCommunicator::mqtt_reconnect()
   if(!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Create a random client ID
-    String clientId = "ESP8266Client-";
-    clientId += String(random(0xffff), HEX);
+    String clientId = "ESP8266Client-master";
+
     // Attempt to connect
-    if (client.connect(clientId.c_str())) {
+    if (client.connect(clientId.c_str(), desk_last_will_topic, 1, 1, desk_last_will_payload)) {
       Serial.println("MQTT connected");
       // Once connected, publish an announcement...
         if(!client.subscribe(led_strip_cmd)){
@@ -178,10 +208,20 @@ void MQTTCommunicator::mqtt_reconnect()
         }         
         if(!client.subscribe(led_screen_cmd)){
             Serial.println("subscription error");
-        }                
+        }   
+        if(!client.subscribe(desk_led_scr_mode_cmd)){
+            Serial.println("subscription error");
+        }      
+        if(!client.subscribe(led_screen_general_t_set)){
+            Serial.println("subscription error");
+        } 
+        if(!client.subscribe(led_screen_general)){
+            Serial.println("subscription error");
+        }                                
         client.publish(led_strip_available, "online");
         client.publish(bulb_available, "online");
         client.publish(led_screen_available, "online");
+        client.publish(desk_last_will_topic, "online");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -226,8 +266,24 @@ void MQTTCommunicator::light_strip1_on()
 {
     mqtt->send_msg(led_strip_state, "{\"state\": \"ON\"}");
 }
+void MQTTCommunicator::update_led_scr_mode()
+{
+    mqtt->send_msg(desk_led_scr_mode_status, screen->get_mode_str_representation());
+}
 
 
 
 
 
+// 1612000338: Sending PINGRESP to mqttdash-066c61e6
+// 1612000346: Received PUBLISH from ESP8266Client-c7e2 (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
+// 1612000346: Sending PUBLISH to 2wQyd6ZozcE5A2uQpbxfZL (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
+// 1612000346: Sending PUBLISH to mqttdash-066c61e6 (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
+// 1612000346: Received PUBLISH from ESP8266Client-c7e2 (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
+// 1612000346: Sending PUBLISH to 2wQyd6ZozcE5A2uQpbxfZL (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
+// 1612000346: Sending PUBLISH to mqttdash-066c61e6 (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
+// 1612000365: Received PINGREQ from ESP8266Client-c7e2
+// 1612000365: Sending PINGRESP to ESP8266Client-c7e2
+// 1612000365: Client ESP8266Client-44de has exceeded timeout, disconnecting.
+// 1612000365: Sending PUBLISH to 2wQyd6ZozcE5A2uQpbxfZL (d0, q0, r0, m0, 'desk/availability', ... (7 bytes))
+// 1612000365: Sending PUBLISH to mqttdash-066c61e6 (d0, q0, r0, m0, 'desk/availability', ... (7 bytes))
