@@ -64,18 +64,6 @@ void message_callback(char* topic, byte* message, unsigned int length)
         int r;
         int g;
         int b;
-        // char * firstIndex = strchr(reply_msg, ',');
-        // char * secondIndex = strchr(firstIndex+1, ',');
-        // zawartość aktualizacji RIPA z horyzontem z wyłączonem horyzontem
-        // jak działają tracreouty, rejestracje TRAS 
-        // że zmieści się nie więcej niż 9 adresów
-        // od ARPA zaczynamy
-        // kończąc na 3 warstwie razem z translacją adresów
-        // TCP UDP - część ustan przy kolokwium praktyczntm
-        // ustno-praktyczne w ostatnim tygodniu krótkimn
-        // między 40 a 60 min trudniejsza część ustna 
-        // jak policzyć te punkty do anihilacji
-        // zademonstrować funkcjonowanie dzielonego horyzontu w najprostszej możliwej topologii
         sscanf(reply_msg, "%d,%d,%d", &r, &g, &b);
         CRGB color;         //one object creation
         color = CRGB(r,g,b);
@@ -200,8 +188,8 @@ void MQTTCommunicator::mqtt_reconnect()
   if(!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Create a random client ID
-    String clientId = "ESP8266Client-";
-    clientId += String(random(0xffff), HEX);
+    String clientId = "ESP8266Client-master";
+
     // Attempt to connect
     if (client.connect(clientId.c_str(), desk_last_will_topic, 1, 1, desk_last_will_payload)) {
       Serial.println("MQTT connected");
@@ -287,3 +275,15 @@ void MQTTCommunicator::update_led_scr_mode()
 
 
 
+// 1612000338: Sending PINGRESP to mqttdash-066c61e6
+// 1612000346: Received PUBLISH from ESP8266Client-c7e2 (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
+// 1612000346: Sending PUBLISH to 2wQyd6ZozcE5A2uQpbxfZL (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
+// 1612000346: Sending PUBLISH to mqttdash-066c61e6 (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
+// 1612000346: Received PUBLISH from ESP8266Client-c7e2 (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
+// 1612000346: Sending PUBLISH to 2wQyd6ZozcE5A2uQpbxfZL (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
+// 1612000346: Sending PUBLISH to mqttdash-066c61e6 (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
+// 1612000365: Received PINGREQ from ESP8266Client-c7e2
+// 1612000365: Sending PINGRESP to ESP8266Client-c7e2
+// 1612000365: Client ESP8266Client-44de has exceeded timeout, disconnecting.
+// 1612000365: Sending PUBLISH to 2wQyd6ZozcE5A2uQpbxfZL (d0, q0, r0, m0, 'desk/availability', ... (7 bytes))
+// 1612000365: Sending PUBLISH to mqttdash-066c61e6 (d0, q0, r0, m0, 'desk/availability', ... (7 bytes))
