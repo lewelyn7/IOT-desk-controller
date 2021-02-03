@@ -1,21 +1,21 @@
 #include "animation.h"
 
-int my_max(int i, int max_val)
+int my_min(int i, int min_val)
 {
-  if (i > max_val)
+  if (i > min_val)
   {
-    return max_val;
+    return min_val;
   }
   else
   {
     return i;
   }
 }
-int my_min(int i, int min_val)
+int my_max(int i, int max_val)
 {
-  if (i < min_val)
+  if (i < max_val)
   {
-    return min_val;
+    return max_val;
   }
   else
   {
@@ -132,11 +132,11 @@ int my_min(int i, int min_val)
 //       }   
 //     }else if(stage == INCREASE_K){
 //       for(uint8_t j = 0; j < NUM_LEDS; j++){
-//         global_set_hsv(leds, j,h,s,my_max(0+i*speed, 255));
+//         global_set_hsv(leds, j,h,s,my_min(0+i*speed, 255));
 //       }      
 //     }else if(stage == DECREASE_K){
 //       for(uint8_t j = 0; j < NUM_LEDS; j++){
-//         global_set_hsv(leds, j,h,s,my_min(v-i*speed, 0));
+//         global_set_hsv(leds, j,h,s,my_max(v-i*speed, 0));
 //       }      
 //     }
 //     if(stage == INCREASE_K){
@@ -200,7 +200,7 @@ int my_min(int i, int min_val)
 //         id = i + j - 20;
 //         if (id < NUM_LEDS && id >= 0)
 //           ;
-//         global_set_hsv(leds, id, h, s, my_max(j * 13, 255));
+//         global_set_hsv(leds, id, h, s, my_min(j * 13, 255));
 //       }
 //     }
 //     else if (stage == REVERSE)
@@ -210,7 +210,7 @@ int my_min(int i, int min_val)
 //         id = NUM_LEDS + 20 - j - i;
 //         if (id < NUM_LEDS && id >= 0)
 //           ;
-//         global_set_hsv(leds, id, h, s, my_max(j * 13, 255));
+//         global_set_hsv(leds, id, h, s, my_min(j * 13, 255));
 //       }
 //     }
 //     i++;
@@ -249,7 +249,7 @@ int my_min(int i, int min_val)
 //     {
 //       for (uint8_t j = 0; j < NUM_LEDS; j++)
 //       {
-//         global_set_rgb(leds, j, blend(CRGB(0, 0, 0), leds[j], my_max(i * 10, 255)));
+//         global_set_rgb(leds, j, blend(CRGB(0, 0, 0), leds[j], my_min(i * 10, 255)));
 //         if (i * 10 > 255)
 //           state = ON;
 //       }
@@ -416,8 +416,8 @@ int my_min(int i, int min_val)
 //     if (stage == LoadingStrip)
 //     { // TODO start animation in for every tick all leds
 //       for(uint8_t j = 0; j <= i; j++){
-//         global_set_hsv(leds, my_max(NUM_LEDS / 2 + j, NUM_LEDS-1), h, s, v);
-//         global_set_hsv(leds, my_min(NUM_LEDS / 2 - j, 0), h, s, v);
+//         global_set_hsv(leds, my_min(NUM_LEDS / 2 + j, NUM_LEDS-1), h, s, v);
+//         global_set_hsv(leds, my_max(NUM_LEDS / 2 - j, 0), h, s, v);
 //       }
 
 //       if (i == NUM_LEDS / 2)
@@ -580,6 +580,11 @@ void Animation::clear_all()
     }
 }
 
+void Animation::reset() 
+{
+  
+}
+
 StaticAnimation::StaticAnimation(CRGB *leds, uint8_t frames) 
 : Animation(leds, frames)
 {
@@ -587,11 +592,34 @@ StaticAnimation::StaticAnimation(CRGB *leds, uint8_t frames)
     h = 124;
     s = 200;
     v = 135; 
+    stage = static_loading;
 }
 
 void StaticAnimation::tick() 
 {
-      updateAll();
+      if (stage == static_loading)
+      { // TODO start animation in for every tick all leds
+        for(uint8_t j = 0; j <= i; j++){
+          global_set_hsv(leds, my_min(NUM_LEDS / 2 + j, NUM_LEDS-1), h, s, v);
+          global_set_hsv(leds, my_max(NUM_LEDS / 2 - j, 0), h, s, v);
+        }
+
+        if (i == NUM_LEDS / 2)
+        {
+          stage = static_disp;
+          i = 0;
+        }
+      }
+      else{
+        updateAll();
+      }
+  
+  i++;
+}
+void StaticAnimation::reset()
+{
+  this->stage = static_loading;
+  i = 0;
 }
 
 void StaticAnimation::updateAll(void) 
@@ -626,11 +654,11 @@ void BlinkingAnimation::tick()
       }   
     }else if(stage == INCREASE_K){
       for(uint8_t j = 0; j < NUM_LEDS; j++){
-        global_set_hsv(leds, j,h,s,my_max(0+i*speed, 255));
+        global_set_hsv(leds, j,h,s,my_min(0+i*speed, 255));
       }      
     }else if(stage == DECREASE_K){
       for(uint8_t j = 0; j < NUM_LEDS; j++){
-        global_set_hsv(leds, j,h,s,my_min(v-i*speed, 0));
+        global_set_hsv(leds, j,h,s,my_max(v-i*speed, 0));
       }      
     }
     if(stage == INCREASE_K){
@@ -684,7 +712,7 @@ void TravelingDotAnimation::tick()
         id = i + j - 20;
         if (id < NUM_LEDS && id >= 0)
           ;
-        global_set_hsv(leds, id, h, s, my_max(j * 13, 255));
+        global_set_hsv(leds, id, h, s, my_min(j * 13, v));
       }
     }
     else if (stage == REVERSE)
@@ -694,7 +722,7 @@ void TravelingDotAnimation::tick()
         id = NUM_LEDS + 20 - j - i;
         if (id < NUM_LEDS && id >= 0)
           ;
-        global_set_hsv(leds, id, h, s, my_max(j * 13, 255));
+        global_set_hsv(leds, id, h, s, my_min(j * 13, v));
       }
     }
     i++;
@@ -719,7 +747,7 @@ void MasterLayer::tick()
     {
       for (uint8_t j = 0; j < NUM_LEDS; j++)
       {
-        global_set_rgb(leds, j, blend(CRGB(0, 0, 0), leds[j], my_max(i * 10, 255)));
+        global_set_rgb(leds, j, blend(CRGB(0, 0, 0), leds[j], my_min(i * 10, 255)));
         if (i * 10 > 255)
           state = ON;
       }
@@ -845,8 +873,7 @@ void NotificationLayer::blink(uint16_t i, CRGB color, uint8_t speed, uint8_t sta
     {
       threshold = 511 - threshold;
     }
-    Serial.print(threshold);
-    Serial.println("");
+
     for (int j = start; j <= stop; j++)
     {
       global_set_rgb(leds, j, blend(color, leds[j], threshold));
@@ -874,18 +901,16 @@ StartAnimation::StartAnimation(CRGB *leds, uint8_t frames)
     h = 96;
     s = 200;
     v = 250;
-    stage = LoadingStrip;
-    i = 0;
-    done_status = false;
-    blink_counter = 0;
+    this->reset();
+
   }
 void StartAnimation::tick() 
   {
     if (stage == LoadingStrip)
     { // TODO start animation in for every tick all leds
       for(uint8_t j = 0; j <= i; j++){
-        global_set_hsv(leds, my_max(NUM_LEDS / 2 + j, NUM_LEDS-1), h, s, v);
-        global_set_hsv(leds, my_min(NUM_LEDS / 2 - j, 0), h, s, v);
+        global_set_hsv(leds, my_min(NUM_LEDS / 2 + j, NUM_LEDS-1), h, s, v);
+        global_set_hsv(leds, my_max(NUM_LEDS / 2 - j, 0), h, s, v);
       }
 
       if (i == NUM_LEDS / 2)
@@ -933,6 +958,14 @@ bool StartAnimation::done()
   {
     return done_status;
   }
+  
+  void StartAnimation::reset() 
+  {
+    stage = LoadingStrip;
+    i = 0;
+    done_status = false;
+    blink_counter = 0;
+  }
 AnimationsManager::AnimationsManager(CRGB *leds) 
   {
     static_anim = new StaticAnimation(leds, 60);
@@ -971,14 +1004,22 @@ void AnimationsManager::next()
   {
     curr_index = (curr_index + 1) % anim_list->size();
     curr = anim_list->get(curr_index);
+    curr->reset();
   }
 void AnimationsManager::previous() 
   {
     curr_index = (curr_index) == 0 ? anim_list->size() - 1 : curr_index - 1;
     curr = anim_list->get(curr_index);
+    curr->reset();
   }
 
 Animation* AnimationsManager::get_current(void) 
   {
     return curr;
   }
+  
+void AnimationsManager::set_current(Animation * anim) 
+{
+  curr = anim;
+  curr->reset();
+}

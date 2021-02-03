@@ -9,8 +9,8 @@ const char * led_strip_available = "desk/strip1/light/ava";
 const char * led_strip_cmd = "desk/strip1/light/switch";
 const char * led_strip_brig_state = "desk/strip1/light/brightness/status";
 const char * led_strip_brig_cmd = "desk/strip1/light/brightness/set";
-const char * led_strip_rgb_state = "desk/strip1/light/rgb/status";
-const char * led_strip_rgb_cmd = "desk/strip1/light/rgb/set";
+const char * led_strip_hs_state = "desk/strip1/light/hs/status";
+const char * led_strip_hs_cmd = "desk/strip1/light/hs/set";
 const char * led_strip_effect_cmd = "desk/strip1/light/set";
 const char * led_strip_effect_state = "desk/strip1/light/status";
 const char * led_strip_effect_list = "desk/strip1/light/list";
@@ -58,17 +58,14 @@ void message_callback(char* topic, byte* message, unsigned int length)
         int value = (uint8_t)atoi(reply_msg);
         animationManager->get_current()->setV(value);
         mqtt->update_led_brightness();
-    }else if(!strcmp(topic, led_strip_rgb_cmd)){
+    }else if(!strcmp(topic, led_strip_hs_cmd)){
         strncpy(reply_msg, (char*)message, length);
         reply_msg[length] = '\0';
-        int r;
-        int g;
-        int b;
-        sscanf(reply_msg, "%d,%d,%d", &r, &g, &b);
-        CRGB color;         //one object creation
-        color = CRGB(r,g,b);
-        CHSV colorHSV = rgb2hsv_approximate(color); //TO CHECK
-        animationManager->get_current()->setHSV(colorHSV.h, colorHSV.s, colorHSV.v);
+        float h;
+        float s;
+        sscanf(reply_msg, "%f,%f", &h, &s);
+        animationManager->get_current()->setH(((int)(h*255.0/360.0))%256);
+        animationManager->get_current()->setS(((int)(s*255.0/100.0))%256);
         mqtt->update_led_strip_hsv();
     }else if(!strcmp(topic, bulb_cmd)){
          if(!strncmp((char*) message, "ON", length)){
@@ -145,10 +142,8 @@ void MQTTCommunicator::led_screen_off()
 void MQTTCommunicator::update_led_strip_hsv() 
 {
     Animation * anim = animationManager->get_current();
-    CRGB color = CRGB();
-    color.setHSV(anim->h, anim->s, anim->v);
-    sprintf(reply_msg, "{\"rgb\": [%d,%d,%d]}", color.r, color.g, color.b);
-    mqtt->send_msg(led_strip_rgb_state, reply_msg);
+    sprintf(reply_msg, "{\"hs\": [%d,%d]}", anim->h*360/255, anim->s*100/255);
+    mqtt->send_msg(led_strip_hs_state, reply_msg);
 }
 MQTTCommunicator::MQTTCommunicator() 
 : client(espClient)
@@ -200,7 +195,7 @@ void MQTTCommunicator::mqtt_reconnect()
         if(!client.subscribe(bulb_cmd)){
             Serial.println("subscription error");
         }
-        if(!client.subscribe(led_strip_rgb_cmd)){
+        if(!client.subscribe(led_strip_hs_cmd)){
             Serial.println("subscription error");
         }
         if(!client.subscribe(led_strip_brig_cmd)){
@@ -276,12 +271,12 @@ void MQTTCommunicator::update_led_scr_mode()
 
 
 // 1612000338: Sending PINGRESP to mqttdash-066c61e6
-// 1612000346: Received PUBLISH from ESP8266Client-c7e2 (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
-// 1612000346: Sending PUBLISH to 2wQyd6ZozcE5A2uQpbxfZL (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
-// 1612000346: Sending PUBLISH to mqttdash-066c61e6 (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
-// 1612000346: Received PUBLISH from ESP8266Client-c7e2 (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
-// 1612000346: Sending PUBLISH to 2wQyd6ZozcE5A2uQpbxfZL (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
-// 1612000346: Sending PUBLISH to mqttdash-066c61e6 (d0, q0, r0, m0, 'desk/strip1/light/rgb/status', ... (18 bytes))
+// 1612000346: Received PUBLISH from ESP8266Client-c7e2 (d0, q0, r0, m0, 'desk/strip1/light/hs/status', ... (18 bytes))
+// 1612000346: Sending PUBLISH to 2wQyd6ZozcE5A2uQpbxfZL (d0, q0, r0, m0, 'desk/strip1/light/hs/status', ... (18 bytes))
+// 1612000346: Sending PUBLISH to mqttdash-066c61e6 (d0, q0, r0, m0, 'desk/strip1/light/hs/status', ... (18 bytes))
+// 1612000346: Received PUBLISH from ESP8266Client-c7e2 (d0, q0, r0, m0, 'desk/strip1/light/hs/status', ... (18 bytes))
+// 1612000346: Sending PUBLISH to 2wQyd6ZozcE5A2uQpbxfZL (d0, q0, r0, m0, 'desk/strip1/light/hs/status', ... (18 bytes))
+// 1612000346: Sending PUBLISH to mqttdash-066c61e6 (d0, q0, r0, m0, 'desk/strip1/light/hs/status', ... (18 bytes))
 // 1612000365: Received PINGREQ from ESP8266Client-c7e2
 // 1612000365: Sending PINGRESP to ESP8266Client-c7e2
 // 1612000365: Client ESP8266Client-44de has exceeded timeout, disconnecting.

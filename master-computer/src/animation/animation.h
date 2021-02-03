@@ -35,6 +35,7 @@ public:
   virtual void setV(uint8_t val);
   void setHSV(uint8_t h1, uint8_t s1, uint8_t v1);
   void clear_all();
+  virtual void reset();
 };
 class StaticAnimation : public Animation
 {
@@ -44,10 +45,15 @@ public:
   StaticAnimation(CRGB *leds, uint8_t frames);;
 
 
-  void tick();;
+  void tick();
+  void reset();
 
   void updateAll(void);;
-
+  enum stages{
+    static_loading,
+    static_disp
+  };
+  stages stage;
 };
 class BlinkingAnimation : public Animation
 {
@@ -148,6 +154,7 @@ public:
   StartAnimation(CRGB *leds, uint8_t frames);
   void tick();
   bool done();
+  void reset();
 };
 class AnimationsManager
 {
@@ -176,7 +183,7 @@ public:
   void previous();
 
   Animation *get_current(void);
-
+  void set_current(Animation * anim);
 };
 
 

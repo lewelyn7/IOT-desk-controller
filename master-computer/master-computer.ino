@@ -290,7 +290,12 @@ void serial_task(void)
       else if (!strncmp(serial_buffer, "wakeup\n", MSERIAL_BUFFER_SIZE))
       {
         animationManager->previous();
-      }                    
+      }    
+      else if (!strncmp(serial_buffer, "init\n", MSERIAL_BUFFER_SIZE))
+      {
+        animationManager->previous();
+        animationManager->set_current(animationManager->start_anim);
+      }                        
     }
     serial_msg_ready = false;
     sbuff_next_idx = 0;

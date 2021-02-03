@@ -20,6 +20,7 @@ void DsClock::update_time()
 void DsClock::rtc_update() 
 {
     this->time = rtc.GetDateTime();
+
 }
 
 uint8_t DsClock::getMinutes() 
