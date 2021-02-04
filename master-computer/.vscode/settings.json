@@ -4,6 +4,8 @@
         "ranges": "cpp",
         "cstddef": "cpp",
         "random": "cpp",
-        "future": "cpp"
-    }
+        "future": "cpp",
+        "*.tcc": "cpp"
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }

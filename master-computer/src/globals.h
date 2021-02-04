@@ -17,6 +17,7 @@
 #define FASTLED_ESP8266_RAW_PIN_ORDER
 #define NUM_LEDS 90
 
+class LCDdisplay;
 class Panel;
 class PanelHandler;
 class AnimationsManager;
@@ -33,5 +34,6 @@ extern Panel *panel;
 extern PanelHandler *phandler;
 extern MQTTCommunicator *mqtt;
 extern Menu * menu;
+extern LCDdisplay * lcd;
 
 #endif // __GLOBALS_H__

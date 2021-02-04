@@ -95,6 +95,7 @@ void Screen::off(void)
   {
     master_on = false;
     // this->updateScreen();
+    tm1637.point(false);
   }
 
 void Screen::on(void) 

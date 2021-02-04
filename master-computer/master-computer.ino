@@ -14,9 +14,10 @@
 #include "src/Panel/Panel.h"
 #include "src/MQTTCommunicator/MQTTCommunicator.h"
 #include "src/DsClock/DsClock.h"
+#include "src/LCDdisplay/LCDdisplay.h"
 #include <FastLED.h>
 
-
+LCDdisplay * lcd;
 DsClock *dsclock;
 Screen *screen;
 CRGB leds[NUM_LEDS];
@@ -360,7 +361,11 @@ void setup()
 
   dht.begin();
   sbuff_next_idx = 0;
-
+  lcd = new LCDdisplay();
+  lcd->setCursor(0,0);
+  lcd->printstr("helloooo");
+  lcd->setCursor(0,1);
+  lcd->printstr("co tam?");
   phandler = new PanelHandler();
   panel = new Panel(phandler);
   screen = new Screen();
