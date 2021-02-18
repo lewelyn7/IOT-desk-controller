@@ -20,9 +20,16 @@
 LCDdisplay * lcd;
 DsClock *dsclock;
 Screen *screen;
+Menu * menu;
+Panel *panel;
+PanelHandler *phandler;
+MQTTCommunicator *mqtt;
+uint8_t colorArray[3];
+
 CRGB leds[NUM_LEDS];
 AnimationsManager *animationManager;
 SoftwareSerial pcSerial1; // rx, tx
+DHT_Unified dht(DHTPIN, DHTTYPE);
 
 Thread dhtThread = Thread();
 Thread animationThread = Thread();
@@ -33,14 +40,7 @@ Thread mqttHsvStripUpdateThread = Thread();
 //Thread serial_task = Thread();
 //Thread panel_serial_task = Thread();
 ThreadController controll = ThreadController();
-DHT_Unified dht(DHTPIN, DHTTYPE);
 
-Menu * menu;
-Panel *panel;
-PanelHandler *phandler;
-MQTTCommunicator *mqtt;
-uint8_t colorArray[3];
-//class serial buffer jest potrzebne
 
 inline void clear_serial(void)
 {
@@ -227,6 +227,8 @@ void panel_serial_task()
   // clear_pc_serial();
 }
 
+
+///////// SERIAL ////////////////
 #define MSERIAL_BUFFER_SIZE 21
 char serial_buffer[MSERIAL_BUFFER_SIZE];
 uint8_t sbuff_next_idx = 0;
@@ -256,8 +258,6 @@ void serial_task(void)
     Serial.println(serial_buffer);
 #endif
 
-    if (menu->serial_state == SerialStates::Ready)
-    {
       if (serial_buffer[0] == 'c')
       {
         serial_buffer[4] = '\0';
@@ -297,7 +297,6 @@ void serial_task(void)
         animationManager->previous();
         animationManager->set_current(animationManager->start_anim);
       }                        
-    }
     serial_msg_ready = false;
     sbuff_next_idx = 0;
   }
@@ -308,12 +307,12 @@ void animation_task(void)
   animationManager->tick();
 }
 
+
+// panel synchronization on startup
 void synchronization_task(void)
-  {
+{
   if (panel->synchronized)
   {
-    //TODO 
-    Serial.println("PANEL_SYNCHRO");
     synchronizationThread.enabled = false;
   }
   else
@@ -327,9 +326,11 @@ void screen_task(void)
 {
   screen->updateScreen();
 }
+
 void mqtt_reconnect_task(void){
   mqtt->mqtt_reconnect();
 }
+
 void mqtt_update_strip_hsv_task(void){
   if(!mqtt->hsv_up_to_date){
     mqtt->update_led_strip_hsv();
@@ -344,7 +345,7 @@ void mqtt_update_strip_hsv_task(void){
 
 //TODO
 
-void temp_hum_task(void)
+void rtc_update_task(void)
 {
     dsclock->rtc_update();
     screen->displayTime(dsclock->getHours(), dsclock->getMinutes());
@@ -352,27 +353,22 @@ void temp_hum_task(void)
 void setup()
 {
 
-
-
-  // pinMode(4, INPUT);
-  // pinMode(3, OUTPUT);
-
   pinMode(LAPTOP_FAN, OUTPUT);
 
-  dht.begin();
-  sbuff_next_idx = 0;
+  Serial.begin(115200);
+  Serial.println("INFO::master computer HELLO");
+
   lcd = new LCDdisplay();
   lcd->setCursor(0,0);
   lcd->printstr("helloooo");
   lcd->setCursor(0,1);
   lcd->printstr("co tam?");
+
   phandler = new PanelHandler();
   panel = new Panel(phandler);
   screen = new Screen();
   animationManager = new AnimationsManager(leds);
   
-
-
   FastLED.addLeds<WS2812B, DATA_PIN_WS, GRB>(leds, NUM_LEDS); // GRB ordering is typical
 
   FastLED.setCorrection( 0xC8DCFF);
@@ -381,12 +377,17 @@ void setup()
     leds[i] = CRGB(0, 0, 0);
   }
   FastLED.show();
-  Serial.begin(115200);
-  Serial.println("master");
+
+  pcSerial1.begin(57600, SWSERIAL_8N1, SERIAL_RX_PIN, SERIAL_TX_PIN, false, 32, 32);
+  mqtt = new MQTTCommunicator();
+  menu = new Menu();
+  dsclock = new DsClock();
+  dsclock->update_time();
+
   // sanity check delay - allows reprogramming if accidently blowing power w/leds
   delay(300);
 
-  dhtThread.onRun(temp_hum_task);
+  dhtThread.onRun(rtc_update_task);
   dhtThread.setInterval(1000);
   screenThread.onRun(screen_task);
   screenThread.setInterval(22);
@@ -407,14 +408,12 @@ void setup()
   controll.add(&dhtThread);
   controll.add(&mqttConnectionThread);
   controll.add(&mqttHsvStripUpdateThread);
-  pcSerial1.begin(57600, SWSERIAL_8N1, SERIAL_RX_PIN, SERIAL_TX_PIN, false, 32, 32);
-  mqtt = new MQTTCommunicator();
-  menu = new Menu();
-  dsclock = new DsClock();
-  dsclock->update_time();
+
+
+
 
   #ifdef DEBUG
-  Serial.println("setup done\r\n");
+  Serial.println("INFO::setup done");
   #endif
 }
 void loop()

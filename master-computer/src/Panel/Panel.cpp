@@ -326,12 +326,12 @@ void PanelHandler::s3_toggle()
 }
 void PanelHandler::s4_on()
 {
-  panel->led_on(4); 
+  panel->led_on(3); 
   lcd->on(); 
 }
 void PanelHandler::s4_off()
 {
-  panel->led_off(4);
+  panel->led_off(3);
   lcd->off();
 }
 void PanelHandler::s4_toggle()
@@ -341,13 +341,13 @@ void PanelHandler::s5_on()
 {
 
   lcd->backlight_on();
-  panel->led_on(3);  
+  panel->led_on(4);  
 }
 void PanelHandler::s5_off()
 {
 
   lcd->backlight_off();
-  panel->led_off(3);  
+  panel->led_off(4);  
 }
 void PanelHandler::s5_toggle()
 {
