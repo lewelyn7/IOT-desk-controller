@@ -1,7 +1,0 @@
-{
-    "board": "esp8266:esp8266:nodemcu",
-    "configuration": "CpuFrequency=80,UploadSpeed=115200",
-    "sketch": "master-computer/master-computer.ino",
-    "output": "../build",
-    "port": "/dev/ttyUSB0"
-}
